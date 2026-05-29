@@ -246,10 +246,10 @@ if SERVER then
         return setmetatable(
             {
                 parent = parent,
-                diameter = (radius or 10) * 2,
+                diameter = (radius or 2) * 2,
                 charge = 1,
                 damage = damage or 5,
-                damage_diameter = (damage_radius or 7.5) * 2,
+                damage_diameter = (damage_radius or 3) * 2,
                 filter = {parent}
             },
             Laser
