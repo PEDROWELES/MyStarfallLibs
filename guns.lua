@@ -1,4 +1,4 @@
---@name Projectiles, damage and ETC
+--@name Projectiles, damage and ETC v2 - Owner Damage and Laser Tuning
 --@author AstricUnion
 --@shared
 --@include https://raw.githubusercontent.com/AstricUnion/Libs/refs/heads/main/ftimers.lua as ftimers
@@ -241,8 +241,9 @@ if SERVER then
     ---@param radius number? Radius of the laser, default 10
     ---@param damage number? Damage of the laser, default 5
     ---@param damage_radius number? Damage radius of the laser, default 7.5
+    ---@param owner Entity? Damage owner for hit credit
     ---@return Laser?
-    function Laser:new(parent, radius, damage, damage_radius)
+    function Laser:new(parent, radius, damage, damage_radius, owner)
         return setmetatable(
             {
                 parent = parent,
@@ -250,7 +251,8 @@ if SERVER then
                 charge = 1,
                 damage = damage or 5,
                 damage_diameter = (damage_radius or 7.5) * 2,
-                filter = {parent}
+                filter = {parent},
+                owner = owner
             },
             Laser
         )
@@ -271,7 +273,18 @@ if SERVER then
         local pos = self.parent:getPos()
         local res = trace.line(pos, pos + self.parent:getForward() * 16384, self.filter)
         if callback then callback(res) end
-        game.blastDamage(res.HitPos, self.diameter + self.damage_diameter, self.damage)
+        local damageRadius = self.diameter + self.damage_diameter
+        local ents = find.inSphere(res.HitPos, damageRadius, function(ent)
+            return isValid(ent) and ent.applyDamage and ent:getHealth() > 0
+        end)
+        for _, ent in ipairs(ents) do
+            if table.hasValue(self.filter, ent) then continue end
+
+            local damagePermitted = hasPermission("entities.applyDamage", ent)
+            if damagePermitted then
+                ent:applyDamage(self.damage, self.owner, self.parent, nil, res.HitPos)
+            end
+        end
     end
 
     function Laser:increaseCharge(value)
