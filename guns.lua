@@ -1,4 +1,4 @@
---@name Projectiles, damage and ETC
+--@name Guns Core v2 - Custom Laser Colors
 --@author AstricUnion
 --@shared
 --@include https://raw.githubusercontent.com/AstricUnion/Libs/refs/heads/main/ftimers.lua as ftimers
