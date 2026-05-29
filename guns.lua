@@ -267,11 +267,34 @@ if SERVER then
         net.send(find.allPlayers())
     end
 
-    function Laser:think(callback)
+    function Laser:think(callback, attacker)
         local pos = self.parent:getPos()
         local res = trace.line(pos, pos + self.parent:getForward() * 16384, self.filter)
         if callback then callback(res) end
-        game.blastDamage(res.HitPos, self.diameter + self.damage_diameter, self.damage)
+        
+        -- КАСТОМНЫЙ BLAST DAMAGE ДЛЯ ЗАЧЕТА УБИЙСТВ
+        local radius = self.diameter + self.damage_diameter
+        local damage = self.damage
+        local actualAttacker = attacker or owner()
+        local inflictor = chip() -- Инфликтором ставим сам чип для логов
+        
+        local ents = find.inSphere(res.HitPos, radius)
+        for _, ent in ipairs(ents) do
+            if isValid(ent) and ent:getHealth() > 0 and not table.hasValue(self.filter, ent) then
+                local damagePermitted, _ = hasPermission("entities.applyDamage", ent)
+                if damagePermitted then
+                    -- Наносим урон: attacker - тот кто взял сыворотку, inflictor - чип
+                    ent:applyDamage(damage, actualAttacker, inflictor, DAMAGE.ENERGYBEAM)
+                end
+                
+                -- Добавляем физический толчок (knockback)
+                if ent:isValidPhys() then
+                    local phys = ent:getPhysicsObject()
+                    local dir = (ent:getPos() - res.HitPos):getNormalized()
+                    phys:applyForceCenter(dir * 5000)
+                end
+            end
+        end
     end
 
     function Laser:increaseCharge(value)
@@ -316,7 +339,7 @@ if SERVER then
                 table.insert(attacked, ent)
                 local velocityPermitted, _ = hasPermission("entities.setVelocity", ent)
                 if velocityPermitted and game.getTickCount() % 2 == 0 and isValid(ent) then
-                    ent:getPhysicsObject():setVelocity(direction * 0.5)
+                    ent:getPhysicsObject():setVelocity(direction * 500) -- Уменьшено вдвое (было 1000)
                 end
                 local damagePermitted, _ = hasPermission("entities.applyDamage", ent)
                 if damagePermitted then
@@ -373,17 +396,22 @@ else
         local pos = self.parent:getPos()
         local res = trace.line(pos, pos + self.parent:getForward() * 16384, self.filter)
         local tick = game.getTickCount()
+        
+        -- ФИКС: Проверка лимита декалей перед созданием
         if tick % 5 == 0 and trace.canCreateDecal() then
-            trace.decal("Dark", res.HitPos, res.HitPos + res.Normal)
+            -- Дополнительная проверка на существование функции
+            if trace.decal then
+                trace.decal("Dark", res.HitPos, res.HitPos + res.Normal)
+            end
         end
         self.holo3:setPos(res.HitPos)
-        local size = (game.getTickCount() % 2 * -0.5) + self.diameter -- Уменьшил дрожание с -3 до -0.5
+        local size = (game.getTickCount() % 2 * -3) + self.diameter
         self.holo3:setSize(Vector(size + self.damage_diameter))
         local dist = pos:getDistance(res.HitPos)
         self.holo:setPos(pos + (res.Normal * (dist / 2)))
-        self.holo:setSize(Vector(size, size, dist)) -- Убрал фиксированное -5
-        self.holo2:setSize(Vector(size + 1, size + 1, dist)) -- Уменьшил прибавку с +10 до +1
-        self.holo4:setSize(Vector(size + 8, size + 8, 32)) -- Уменьшил волюметрический свет с +64 до +8
+        self.holo:setSize(Vector(size - 5, size - 5, dist))
+        self.holo2:setSize(Vector(size + 10, size + 10, dist))
+        self.holo4:setSize(Vector(size + 64, size + 64, 128))
         local eye = eyePos()
         local localEyes = self.holo:worldToLocal(eye):getAngleEx(Vector())
         self.holo2:setMaterial("cable/redlaser")
