@@ -377,13 +377,13 @@ else
             trace.decal("Dark", res.HitPos, res.HitPos + res.Normal)
         end
         self.holo3:setPos(res.HitPos)
-        local size = (game.getTickCount() % 2 * -3) + self.diameter
+        local size = (game.getTickCount() % 2 * -0.5) + self.diameter -- Уменьшил дрожание с -3 до -0.5
         self.holo3:setSize(Vector(size + self.damage_diameter))
         local dist = pos:getDistance(res.HitPos)
         self.holo:setPos(pos + (res.Normal * (dist / 2)))
-        self.holo:setSize(Vector(size - 5, size - 5, dist))
-        self.holo2:setSize(Vector(size + 10, size + 10, dist))
-        self.holo4:setSize(Vector(size + 64, size + 64, 128))
+        self.holo:setSize(Vector(size, size, dist)) -- Убрал фиксированное -5
+        self.holo2:setSize(Vector(size + 1, size + 1, dist)) -- Уменьшил прибавку с +10 до +1
+        self.holo4:setSize(Vector(size + 8, size + 8, 32)) -- Уменьшил волюметрический свет с +64 до +8
         local eye = eyePos()
         local localEyes = self.holo:worldToLocal(eye):getAngleEx(Vector())
         self.holo2:setMaterial("cable/redlaser")
