@@ -1,4 +1,4 @@
---@name Projectiles, damage and ETC v2 - Owner Damage and Laser Tuning
+--@name Projectiles, damage and ETC
 --@author AstricUnion
 --@shared
 --@include https://raw.githubusercontent.com/AstricUnion/Libs/refs/heads/main/ftimers.lua as ftimers
@@ -241,9 +241,8 @@ if SERVER then
     ---@param radius number? Radius of the laser, default 10
     ---@param damage number? Damage of the laser, default 5
     ---@param damage_radius number? Damage radius of the laser, default 7.5
-    ---@param owner Entity? Damage owner for hit credit
     ---@return Laser?
-    function Laser:new(parent, radius, damage, damage_radius, owner)
+    function Laser:new(parent, radius, damage, damage_radius)
         return setmetatable(
             {
                 parent = parent,
@@ -251,8 +250,7 @@ if SERVER then
                 charge = 1,
                 damage = damage or 5,
                 damage_diameter = (damage_radius or 7.5) * 2,
-                filter = {parent},
-                owner = owner
+                filter = {parent}
             },
             Laser
         )
@@ -273,18 +271,7 @@ if SERVER then
         local pos = self.parent:getPos()
         local res = trace.line(pos, pos + self.parent:getForward() * 16384, self.filter)
         if callback then callback(res) end
-        local damageRadius = self.diameter + self.damage_diameter
-        local ents = find.inSphere(res.HitPos, damageRadius, function(ent)
-            return isValid(ent) and ent.applyDamage and ent:getHealth() > 0
-        end)
-        for _, ent in ipairs(ents) do
-            if table.hasValue(self.filter, ent) then continue end
-
-            local damagePermitted = hasPermission("entities.applyDamage", ent)
-            if damagePermitted then
-                ent:applyDamage(self.damage, self.owner, self.parent, nil, res.HitPos)
-            end
-        end
+        game.blastDamage(res.HitPos, self.diameter + self.damage_diameter, self.damage)
     end
 
     function Laser:increaseCharge(value)
@@ -329,7 +316,7 @@ if SERVER then
                 table.insert(attacked, ent)
                 local velocityPermitted, _ = hasPermission("entities.setVelocity", ent)
                 if velocityPermitted and game.getTickCount() % 2 == 0 and isValid(ent) then
-                    ent:getPhysicsObject():setVelocity(direction * 0.5)
+                    ent:getPhysicsObject():setVelocity(direction * 1000)
                 end
                 local damagePermitted, _ = hasPermission("entities.applyDamage", ent)
                 if damagePermitted then
@@ -390,18 +377,13 @@ else
             trace.decal("Dark", res.HitPos, res.HitPos + res.Normal)
         end
         self.holo3:setPos(res.HitPos)
-        -- Keep the laser width proportional to the configured diameter.
-        local pulse = tick % 2 == 0 and 0 or -(self.diameter * 0.15)
-        local size = math.max((self.diameter * 0.5) + pulse, 0.05)
-        local impactSize = math.max(size + (self.damage_diameter * 0.25), 0.1)
-        local glowSize = math.max(size * 1.8, 0.08)
-        local lightSize = math.max(size * 6, 0.5)
-        self.holo3:setSize(Vector(impactSize))
+        local size = (game.getTickCount() % 2 * -3) + self.diameter
+        self.holo3:setSize(Vector(size + self.damage_diameter))
         local dist = pos:getDistance(res.HitPos)
         self.holo:setPos(pos + (res.Normal * (dist / 2)))
-        self.holo:setSize(Vector(size, size, dist))
-        self.holo2:setSize(Vector(glowSize, glowSize, dist))
-        self.holo4:setSize(Vector(lightSize, lightSize, 128))
+        self.holo:setSize(Vector(size - 5, size - 5, dist))
+        self.holo2:setSize(Vector(size + 10, size + 10, dist))
+        self.holo4:setSize(Vector(size + 64, size + 64, 128))
         local eye = eyePos()
         local localEyes = self.holo:worldToLocal(eye):getAngleEx(Vector())
         self.holo2:setMaterial("cable/redlaser")
@@ -469,7 +451,7 @@ else
 
         holo3:suppressEngineLighting(true)
         holo3:setMaterial("debug/debugwhite")
-        holo3:setSize(Vector(math.max((tab.diameter * 0.5) + (tab.damage_diameter * 0.25), 0.1)))
+        holo3:setSize(Vector(tab.diameter + tab.damage_diameter))
 
         holo4:setLocalAngles(Angle(-90, 0, 0))
         holo4:suppressEngineLighting(true)
