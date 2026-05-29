@@ -238,18 +238,18 @@ if SERVER then
 
     ---Creates laser object
     ---@param parent Entity Object to parent
-    ---@param radius number? Radius of the laser, default 10
+    ---@param radius number? Radius of the laser, default 5 (ИЗМЕНЕНО: было 10)
     ---@param damage number? Damage of the laser, default 5
-    ---@param damage_radius number? Damage radius of the laser, default 7.5
+    ---@param damage_radius number? Damage radius of the laser, default 3.75 (ИЗМЕНЕНО: было 7.5)
     ---@return Laser?
     function Laser:new(parent, radius, damage, damage_radius)
         return setmetatable(
             {
                 parent = parent,
-                diameter = (radius or 10) * 2,
+                diameter = (radius or 5) * 2, -- ИЗМЕНЕНО: дефолт 5 вместо 10
                 charge = 1,
                 damage = damage or 5,
-                damage_diameter = (damage_radius or 7.5) * 2,
+                damage_diameter = (damage_radius or 3.75) * 2, -- ИЗМЕНЕНО: дефолт 3.75 вместо 7.5
                 filter = {parent}
             },
             Laser
@@ -377,18 +377,13 @@ else
             trace.decal("Dark", res.HitPos, res.HitPos + res.Normal)
         end
         self.holo3:setPos(res.HitPos)
-        -- Keep the laser width proportional to the configured diameter.
-        local pulse = tick % 2 == 0 and 0 or -(self.diameter * 0.15)
-        local size = math.max((self.diameter * 0.5) + pulse, 0.05)
-        local impactSize = math.max(size + (self.damage_diameter * 0.25), 0.1)
-        local glowSize = math.max(size * 1.8, 0.08)
-        local lightSize = math.max(size * 6, 0.5)
-        self.holo3:setSize(Vector(impactSize))
+        local size = (game.getTickCount() % 2 * -1.5) + self.diameter -- ИЗМЕНЕНО: пульсация уменьшена вдвое (-1.5 вместо -3)
+        self.holo3:setSize(Vector(size + self.damage_diameter))
         local dist = pos:getDistance(res.HitPos)
         self.holo:setPos(pos + (res.Normal * (dist / 2)))
-        self.holo:setSize(Vector(size, size, dist))
-        self.holo2:setSize(Vector(glowSize, glowSize, dist))
-        self.holo4:setSize(Vector(lightSize, lightSize, 128))
+        self.holo:setSize(Vector(size - 2.5, size - 2.5, dist)) -- ИЗМЕНЕНО: внутренний отступ уменьшен вдвое (2.5 вместо 5)
+        self.holo2:setSize(Vector(size + 5, size + 5, dist)) -- ИЗМЕНЕНО: внешний отступ уменьшен вдвое (5 вместо 10)
+        self.holo4:setSize(Vector(size + 32, size + 32, 64)) -- ИЗМЕНЕНО: свечение уменьшено вдвое (32 и 64 вместо 64 и 128)
         local eye = eyePos()
         local localEyes = self.holo:worldToLocal(eye):getAngleEx(Vector())
         self.holo2:setMaterial("cable/redlaser")
@@ -456,7 +451,7 @@ else
 
         holo3:suppressEngineLighting(true)
         holo3:setMaterial("debug/debugwhite")
-        holo3:setSize(Vector(math.max((tab.diameter * 0.5) + (tab.damage_diameter * 0.25), 0.1)))
+        holo3:setSize(Vector(tab.diameter + tab.damage_diameter))
 
         holo4:setLocalAngles(Angle(-90, 0, 0))
         holo4:suppressEngineLighting(true)
