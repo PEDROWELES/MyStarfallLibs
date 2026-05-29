@@ -316,7 +316,7 @@ if SERVER then
                 table.insert(attacked, ent)
                 local velocityPermitted, _ = hasPermission("entities.setVelocity", ent)
                 if velocityPermitted and game.getTickCount() % 2 == 0 and isValid(ent) then
-                    ent:getPhysicsObject():setVelocity(direction * 1)
+                    ent:getPhysicsObject():setVelocity(direction * 0.5)
                 end
                 local damagePermitted, _ = hasPermission("entities.applyDamage", ent)
                 if damagePermitted then
