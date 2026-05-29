@@ -1,4 +1,4 @@
---@name Guns Core v2 - Custom Laser Colors
+--@name Guns Core v3 - Laser Visual Fix
 --@author AstricUnion
 --@shared
 --@include https://raw.githubusercontent.com/AstricUnion/Libs/refs/heads/main/ftimers.lua as ftimers
@@ -385,13 +385,20 @@ else
             trace.decal("Dark", res.HitPos, res.HitPos + res.Normal)
         end
         self.holo3:setPos(res.HitPos)
-        local size = (game.getTickCount() % 2 * -3) + self.diameter
-        self.holo3:setSize(Vector(size + self.damage_diameter))
+
+        -- Keep the beam width proportional to the configured laser diameter.
+        local pulse = tick % 2 == 0 and 0 or -(self.diameter * 0.15)
+        local size = math.max((self.diameter * 0.5) + pulse, 0.05)
+        local impactSize = math.max(size + (self.damage_diameter * 0.25), 0.05)
+        local glowSize = math.max(size * 1.8, 0.08)
+        local lightSize = math.max(size * 6, 0.5)
+
+        self.holo3:setSize(Vector(impactSize))
         local dist = pos:getDistance(res.HitPos)
         self.holo:setPos(pos + (res.Normal * (dist / 2)))
-        self.holo:setSize(Vector(size - 5, size - 5, dist))
-        self.holo2:setSize(Vector(size + 10, size + 10, dist))
-        self.holo4:setSize(Vector(size + 64, size + 64, 128))
+        self.holo:setSize(Vector(size, size, dist))
+        self.holo2:setSize(Vector(glowSize, glowSize, dist))
+        self.holo4:setSize(Vector(lightSize, lightSize, 128))
         local eye = eyePos()
         local localEyes = self.holo:worldToLocal(eye):getAngleEx(Vector())
         self.holo2:setMaterial("cable/redlaser")
@@ -454,19 +461,18 @@ else
         holo:setLocalAngles(Angle(90, 0, 0))
         holo:suppressEngineLighting(true)
         holo:setMaterial("debug/debugwhite")
-        holo:setColor(customColor)
 
         holo2:suppressEngineLighting(true)
-        holo2:setColor(Color(255, 255, 255))
+        holo2:setColor(customColor)
 
         holo3:suppressEngineLighting(true)
         holo3:setMaterial("debug/debugwhite")
-        holo3:setSize(Vector(tab.diameter + tab.damage_diameter))
+        holo3:setSize(Vector(math.max((tab.diameter * 0.5) + (tab.damage_diameter * 0.25), 0.05)))
         holo3:setColor(customColor)
 
         holo4:setLocalAngles(Angle(-90, 0, 0))
         holo4:suppressEngineLighting(true)
-        holo4:setColor(Color(customColor.r, customColor.g, customColor.b, 100))
+        holo4:setColor(Color(255, 0, 0, 100))
 
         local model = LaserModel:new(holo, holo2, holo3, holo4, tab.parent, 0, tab.damage_diameter, tab.filter)
         models[tab.parent:entIndex()] = model
