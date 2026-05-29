@@ -231,6 +231,9 @@ if SERVER then
         damage_diameter = nil,
 
         ---@type table
+        color = nil,
+
+        ---@type table
         filter = nil
     }
     Laser.__index = Laser
@@ -250,6 +253,7 @@ if SERVER then
                 charge = 1,
                 damage = damage or 5,
                 damage_diameter = (damage_radius or 7.5) * 2,
+                color = Color(255, 0, 0),
                 filter = {parent}
             },
             Laser
@@ -258,6 +262,10 @@ if SERVER then
 
     function Laser:addIgnore(ent)
         table.insert(self.filter, ent)
+    end
+
+    function Laser:setColor(color)
+        self.color = color or Color(255, 0, 0)
     end
 
     ---Shoot with laser
@@ -316,7 +324,7 @@ if SERVER then
                 table.insert(attacked, ent)
                 local velocityPermitted, _ = hasPermission("entities.setVelocity", ent)
                 if velocityPermitted and game.getTickCount() % 2 == 0 and isValid(ent) then
-                    ent:getPhysicsObject():setVelocity(direction * 0.5)
+                    ent:getPhysicsObject():setVelocity(direction * 1000)
                 end
                 local damagePermitted, _ = hasPermission("entities.applyDamage", ent)
                 if damagePermitted then
@@ -349,7 +357,6 @@ else
 
     local models = {}
 
-    ---@diagnostic disable-next-line: max-line-length
     function LaserModel:new(holo, holo2, holo3, holo4, parent, diameter, damage_diameter, filter)
         return setmetatable(
             {
@@ -378,23 +385,13 @@ else
             trace.decal("Dark", res.HitPos, res.HitPos + res.Normal)
         end
         self.holo3:setPos(res.HitPos)
-        
-        -- НАЧАЛО ИЗМЕНЕНИЙ ИЗ СКРИНШОТА
-        -- Keep the laser width proportional to the configured diameter.
-        local pulse = tick % 2 == 0 and 0 or -(self.diameter * 0.15)
-        local size = math.max((self.diameter * 0.5) + pulse, 0.05)
-        local impactSize = math.max(size + (self.damage_diameter * 0.25), 0.05)
-        local glowSize = math.max(size * 1.8, 0.08)
-        local lightSize = math.max(size * 6, 0.5)
-        
-        self.holo3:setSize(Vector(impactSize))
+        local size = (game.getTickCount() % 2 * -3) + self.diameter
+        self.holo3:setSize(Vector(size + self.damage_diameter))
         local dist = pos:getDistance(res.HitPos)
         self.holo:setPos(pos + (res.Normal * (dist / 2)))
-        self.holo:setSize(Vector(size, size, dist))
-        self.holo2:setSize(Vector(glowSize, glowSize, dist))
-        self.holo4:setSize(Vector(lightSize, lightSize, 128))
-        -- КОНЕЦ ИЗМЕНЕНИЙ ИЗ СКРИНШОТА
-
+        self.holo:setSize(Vector(size - 5, size - 5, dist))
+        self.holo2:setSize(Vector(size + 10, size + 10, dist))
+        self.holo4:setSize(Vector(size + 64, size + 64, 128))
         local eye = eyePos()
         local localEyes = self.holo:worldToLocal(eye):getAngleEx(Vector())
         self.holo2:setMaterial("cable/redlaser")
@@ -444,6 +441,7 @@ else
     net.receive("laserOn", function()
         local tab = net.readTable()
         if models[tab.parent:entIndex()] then return end
+        local customColor = tab.color or Color(255, 0, 0)
         local holo = hologram.create(tab.parent:getPos(), tab.parent:getAngles(), "models/holograms/hq_cylinder.mdl")
         local holo2 = hologram.create(tab.parent:getPos(), tab.parent:getAngles(), "models/holograms/hq_cylinder.mdl")
         local holo3 = hologram.create(tab.parent:getPos(), tab.parent:getAngles(), "models/holograms/hq_sphere.mdl")
@@ -456,19 +454,19 @@ else
         holo:setLocalAngles(Angle(90, 0, 0))
         holo:suppressEngineLighting(true)
         holo:setMaterial("debug/debugwhite")
+        holo:setColor(customColor)
 
         holo2:suppressEngineLighting(true)
-        holo2:setColor(Color(255, 0, 0))
+        holo2:setColor(Color(255, 255, 255))
 
         holo3:suppressEngineLighting(true)
         holo3:setMaterial("debug/debugwhite")
-        
-        -- ИЗМЕНЕНО ПО СКРИНШОТУ (строка 459)
-        holo3:setSize(Vector(math.max((tab.diameter * 0.5) + (tab.damage_diameter * 0.25), 0.05)))
+        holo3:setSize(Vector(tab.diameter + tab.damage_diameter))
+        holo3:setColor(customColor)
 
         holo4:setLocalAngles(Angle(-90, 0, 0))
         holo4:suppressEngineLighting(true)
-        holo4:setColor(Color(255, 0, 0, 100))
+        holo4:setColor(Color(customColor.r, customColor.g, customColor.b, 100))
 
         local model = LaserModel:new(holo, holo2, holo3, holo4, tab.parent, 0, tab.damage_diameter, tab.filter)
         models[tab.parent:entIndex()] = model
