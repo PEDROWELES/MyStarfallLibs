@@ -1,4 +1,4 @@
---@name Eye Laser UI
+--@name Eye Laser UI v2 - Toast API
 --@author OpenAI
 --@client
 
