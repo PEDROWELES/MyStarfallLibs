@@ -1,7 +1,6 @@
---@name Compound V Speed v2 - Wind Sound Fix
+--@name Compound V Speed v3 - Sound Limit Removed
 --@author OpenAI
 --@shared
---@include https://raw.githubusercontent.com/AstricUnion/Libs/refs/heads/main/sounds.lua as sounds
 
 local CompoundVSpeed = {}
 CompoundVSpeed.__index = CompoundVSpeed
@@ -13,9 +12,7 @@ function CompoundVSpeed:new(baseSpeed, sprintMultiplier)
         trailMain = nil,
         trailLightning = nil,
         trailColor = Color(0, 150, 255),
-        lightningColor = Color(120, 220, 255),
-        nextWind = 0,
-        windSound = nil
+        lightningColor = Color(120, 220, 255)
     }, CompoundVSpeed)
 end
 
@@ -88,27 +85,8 @@ function CompoundVSpeed:removeTrails()
     self.trailLightning = nil
 end
 
-function CompoundVSpeed:stopWind()
-    if self.windSound then
-        self.windSound:stop()
-        self.windSound = nil
-    end
-end
-
-function CompoundVSpeed:playWind(ply)
-    if not isValid(ply) then return end
-
-    self:stopWind()
-    self.windSound = sounds.create(ply, "ambient/wind/wind_hit" .. math.random(1, 3) .. ".wav")
-    if self.windSound then
-        self.windSound:play()
-    end
-end
-
 function CompoundVSpeed:reset()
-    self.nextWind = 0
     self:removeTrails()
-    self:stopWind()
 end
 
 function CompoundVSpeed:update(ply)
@@ -168,16 +146,11 @@ function CompoundVSpeed:update(ply)
     self:createTrails(ply)
 
     if isValid(self.trailMain) then
-        self.trailMain:setTrails(350, 0, 28, "trails/laser", self.trailColor)
+        self.trailMain:setTrails(430, 0, 30, "trails/laser", self.trailColor)
     end
 
     if isValid(self.trailLightning) then
-        self.trailLightning:setTrails(35, 0, 10, "trails/electric", self.lightningColor)
-    end
-
-    if timer.curtime() >= self.nextWind then
-        self:playWind(ply)
-        self.nextWind = timer.curtime() + 0.7
+        self.trailLightning:setTrails(55, 0, 12, "trails/electric", self.lightningColor)
     end
 
     return {
