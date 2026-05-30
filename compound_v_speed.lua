@@ -1,9 +1,7 @@
---@name Compound V Speed
+--@name Compound V Speed v2 - Wind Sound Fix
 --@author OpenAI
 --@shared
 --@include https://raw.githubusercontent.com/AstricUnion/Libs/refs/heads/main/sounds.lua as sounds
-
-local sounds = require("sounds")
 
 local CompoundVSpeed = {}
 CompoundVSpeed.__index = CompoundVSpeed
