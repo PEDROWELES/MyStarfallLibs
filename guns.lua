@@ -219,6 +219,9 @@ if SERVER then
         parent = nil,
 
         ---@type number
+        radius = nil,
+
+        ---@type number
         diameter = nil,
 
         ---@type number
@@ -228,10 +231,16 @@ if SERVER then
         damage = nil,
 
         ---@type number
+        damage_radius = nil,
+
+        ---@type number
         damage_diameter = nil,
 
         ---@type table
         color = nil,
+
+        ---@type string
+        color_name = nil,
 
         ---@type table
         filter = nil
@@ -246,14 +255,19 @@ if SERVER then
     ---@param damage_radius number? Damage radius of the laser, default 7.5
     ---@return Laser?
     function Laser:new(parent, radius, damage, damage_radius)
+        radius = radius or 10
+        damage_radius = damage_radius or 7.5
         return setmetatable(
             {
                 parent = parent,
-                diameter = (radius or 10) * 2,
+                radius = radius,
+                diameter = radius * 2,
                 charge = 1,
                 damage = damage or 5,
-                damage_diameter = (damage_radius or 7.5) * 2,
+                damage_radius = damage_radius,
+                damage_diameter = damage_radius * 2,
                 color = Color(255, 0, 0),
+                color_name = "Red",
                 filter = {parent}
             },
             Laser
@@ -266,6 +280,24 @@ if SERVER then
 
     function Laser:setColor(color)
         self.color = color or Color(255, 0, 0)
+    end
+
+    function Laser:setColorName(name)
+        self.color_name = name or "Red"
+    end
+
+    function Laser:setRadius(radius)
+        self.radius = radius or 10
+        self.diameter = self.radius * 2
+    end
+
+    function Laser:setProfile(profile)
+        if not profile then return end
+        if profile.radius then self:setRadius(profile.radius) end
+        if profile.damage then self:setDamage(profile.damage) end
+        if profile.damageRadius then self:setDamageRadius(profile.damageRadius) end
+        if profile.color then self:setColor(profile.color) end
+        if profile.colorName then self:setColorName(profile.colorName) end
     end
 
     ---Shoot with laser
@@ -298,7 +330,12 @@ if SERVER then
     end
 
     function Laser:setDamageRadius(radius)
+        self.damage_radius = radius
         self.damage_diameter = radius * 2
+    end
+
+    function Laser:getRadius()
+        return self.radius
     end
 
     function Laser:getCharge()
@@ -461,6 +498,7 @@ else
         holo:setLocalAngles(Angle(90, 0, 0))
         holo:suppressEngineLighting(true)
         holo:setMaterial("debug/debugwhite")
+        holo:setColor(Color(customColor.r, customColor.g, customColor.b, 220))
 
         holo2:suppressEngineLighting(true)
         holo2:setColor(customColor)
@@ -472,7 +510,7 @@ else
 
         holo4:setLocalAngles(Angle(-90, 0, 0))
         holo4:suppressEngineLighting(true)
-        holo4:setColor(Color(255, 0, 0, 100))
+        holo4:setColor(Color(customColor.r, customColor.g, customColor.b, 100))
 
         local model = LaserModel:new(holo, holo2, holo3, holo4, tab.parent, 0, tab.damage_diameter, tab.filter)
         models[tab.parent:entIndex()] = model
