@@ -2,58 +2,58 @@
 --@author User & Gemini
 --@client
 
+-- Создаем шрифт помельче, чтобы русский текст управления влез нормально
 local fontMontserrat24 = render.createFont("Montserrat", 24, 500, true, false, false, false, 0, true, 0)
 
+local notifyTitle = ""
 local notifyText = ""
-local notifySubText = ""
-local notifyAlpha = 0
 local notifyEndTime = 0
+local notifyAlpha = 0
 
--- Получение сетевого сигнала от сервера
+-- Принимаем сигнал от сервера, когда кто-то колется
 net.receive("vought_ui_notify", function()
+    notifyTitle = net.readString()
     notifyText = net.readString()
-    notifySubText = net.readString()
-    notifyEndTime = timer.curtime() + 8 -- Показываем 8 секунд
+    notifyEndTime = timer.curtime() + 8 -- Показываем плашку 8 секунд
     notifyAlpha = 0
 end)
 
--- ИСПРАВЛЕНО: Теперь хук HUDPaint, чтобы рисовалось прямо на экране игрока, а не на чипе
-hook.add("HUDPaint", "VoughtNotification", function()
+-- Основной хук отрисовки на экран клиента
+hook.add("render", "VoughtScreenHUD", function()
     if timer.curtime() > notifyEndTime and notifyAlpha <= 0 then return end
     
-    -- Плавное появление и исчезновение плашки
+    -- Рассчитываем плавное появление/исчезновение альфы
     if timer.curtime() < notifyEndTime then
-        notifyAlpha = math.Approach(notifyAlpha, 255, render.getFrameTime() * 500)
+        notifyAlpha = math.approach(notifyAlpha, 255, render.getFrameTime() * 500)
     else
-        notifyAlpha = math.Approach(notifyAlpha, 0, render.getFrameTime() * 250)
+        notifyAlpha = math.approach(notifyAlpha, 0, render.getFrameTime() * 250)
     end
     
     local scrW, scrH = render.getResolution()
-    local w, h = 600, 80
+    local w, h = 650, 90
     local x = (scrW - w) / 2
-    local y = scrH - h - 100 -- Позиция снизу экрана, чуть выше стандартного HUD
+    local y = scrH - h - 80 -- Позиция снизу экрана
     
-    -- Рисуем в 2D контексте экрана
-    render.start2D()
-        -- Задний фон (темный)
-        render.setColor(Color(20, 20, 20, notifyAlpha * 0.85))
-        render.drawRect(x, y, w, h)
-        
-        -- Левая неоновая полоска
-        render.setColor(Color(180, 255, 0, notifyAlpha))
-        render.drawRect(x, y, 6, h)
-        
-        -- Рамка
-        render.setColor(Color(255, 255, 255, notifyAlpha * 0.1))
-        render.drawRectOutline(x, y, w, h, 1)
-        
-        -- Текст заголовка
-        render.setFont(fontMontserrat24)
-        render.setColor(Color(180, 255, 0, notifyAlpha))
-        render.drawText(x + 20, y + 15, notifyText, 0)
-        
-        -- Текст управления (на русском)
-        render.setColor(Color(255, 255, 255, notifyAlpha * 0.9))
-        render.drawText(x + 20, y + 45, notifySubText, 0)
-    render.end2D()
+    -- Рисуем темную плашку (задний фон) в стиле твоего UI
+    render.setColor(Color(15, 15, 15, notifyAlpha * 0.9))
+    render.drawRect(x, y, w, h)
+    
+    -- Окантовка (как drawRectOutline из твоего примера)
+    render.setColor(Color(255, 255, 255, notifyAlpha * 0.15))
+    render.drawRectOutline(x, y, w, h, 2)
+    
+    -- Левая неоновая полоска (эффект сыворотки)
+    render.setColor(Color(180, 255, 0, notifyAlpha))
+    render.drawRect(x, y, 6, h)
+    
+    -- Отрисовка текста
+    render.setFont(fontMontserrat24)
+    
+    -- Заголовок уведомления
+    render.setColor(Color(180, 255, 0, notifyAlpha))
+    render.drawText(x + 20, y + 15, notifyTitle, 0)
+    
+    -- Инструкция по управлению
+    render.setColor(Color(255, 255, 255, notifyAlpha * 0.85))
+    render.drawText(x + 20, y + 48, notifyText, 0)
 end)
