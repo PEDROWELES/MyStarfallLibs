@@ -2,69 +2,61 @@
 --@author OpenAI
 --@client
 
-local fontTitle = render.createFont(
-    "Montserrat",
-    30,
-    700,
-    true,
-    false,
-    false,
-    false,
-    0,
-    true,
-    0
-)
-
-local fontBody = render.createFont(
-    "Montserrat",
-    22,
-    500,
-    true,
-    false,
-    false,
-    false,
-    0,
-    true,
-    0
-)
+local fontTitle = render.createFont("Montserrat", 28, 700, true)
+local fontBody = render.createFont("Montserrat", 20, 500, true)
+local fontSmall = render.createFont("Montserrat", 17, 500, true)
 
 local EyeLaserUI = {
-    active = false,
-    expiresAt = 0,
-    title = "COMPOUND V ACTIVE",
-    lines = {
-        "Eye lasers unlocked",
-        "Hold LMB + RMB to fire"
-    }
+    powers = {},
+    toasts = {}
 }
 
-function EyeLaserUI:show(duration, title, lines)
-    self.active = true
-    self.expiresAt = duration and duration > 0 and (timer.curtime() + duration) or 0
-    self.title = title or "COMPOUND V ACTIVE"
-    self.lines = lines or {
-        "Eye lasers unlocked",
-        "Hold LMB + RMB to fire"
-    }
-end
-
-function EyeLaserUI:hide()
-    self.active = false
-    self.expiresAt = 0
-end
-
-hook.add("DrawHUD", "EyeLaserInstructionsHUD", function()
-    if not EyeLaserUI.active then return end
-
-    if EyeLaserUI.expiresAt > 0 and timer.curtime() >= EyeLaserUI.expiresAt then
-        EyeLaserUI:hide()
-        return
+local function cloneRows(rows)
+    local result = {}
+    for index, row in ipairs(rows or {}) do
+        result[index] = {
+            label = row.label or "",
+            detail = row.detail or "",
+            color = row.color or Color(180, 255, 0)
+        }
     end
+    return result
+end
+
+function EyeLaserUI:setPowers(rows)
+    self.powers = cloneRows(rows)
+end
+
+function EyeLaserUI:clearPowers()
+    self.powers = {}
+end
+
+function EyeLaserUI:pushToast(title, message, color, duration)
+    table.insert(self.toasts, 1, {
+        title = title or "COMPOUND V",
+        message = message or "",
+        color = color or Color(180, 255, 0),
+        expire = timer.curtime() + (duration or 6)
+    })
+
+    while #self.toasts > 4 do
+        table.remove(self.toasts)
+    end
+end
+
+function EyeLaserUI:clearToasts()
+    self.toasts = {}
+end
+
+local function drawPowerPanel()
+    if #EyeLaserUI.powers == 0 then return end
 
     local w, h = render.getGameResolution()
-    local panelW, panelH = 560, 96
+    local panelW = 720
+    local rowH = 30
+    local panelH = 54 + (#EyeLaserUI.powers * rowH)
     local x = math.floor((w - panelW) * 0.5)
-    local y = math.floor(h * 0.84)
+    local y = math.floor(h * 0.77)
 
     render.setColor(Color(0, 0, 0, 170))
     render.drawRect(x, y, panelW, panelH)
@@ -72,17 +64,61 @@ hook.add("DrawHUD", "EyeLaserInstructionsHUD", function()
     render.setColor(Color(180, 255, 0, 255))
     render.drawRect(x, y, panelW, 4)
 
-    render.setColor(Color(255, 255, 255, 25))
-    render.drawRect(x + 12, y + 44, panelW - 24, 1)
-
     render.setColor(Color(200, 255, 120))
     render.setFont(fontTitle)
-    render.drawSimpleText(w / 2, y + 10, EyeLaserUI.title, 1)
+    render.drawSimpleText(w * 0.5, y + 10, "COMPOUND V ACTIVE", 1)
 
-    render.setColor(Color(255, 255, 255))
     render.setFont(fontBody)
-    render.drawSimpleText(w / 2, y + 50, EyeLaserUI.lines[1] or "", 1)
-    render.drawSimpleText(w / 2, y + 72, EyeLaserUI.lines[2] or "", 1)
+    for index, row in ipairs(EyeLaserUI.powers) do
+        local rowY = y + 42 + ((index - 1) * rowH)
+        render.setColor(Color(255, 255, 255, 20))
+        render.drawRect(x + 16, rowY + 23, panelW - 32, 1)
+
+        render.setColor(row.color)
+        render.drawText(x + 24, rowY, row.label)
+
+        render.setColor(Color(255, 255, 255))
+        render.drawText(x + 220, rowY, row.detail)
+    end
+end
+
+local function drawToasts()
+    local now = timer.curtime()
+    for index = #EyeLaserUI.toasts, 1, -1 do
+        if EyeLaserUI.toasts[index].expire <= now then
+            table.remove(EyeLaserUI.toasts, index)
+        end
+    end
+
+    if #EyeLaserUI.toasts == 0 then return end
+
+    local w = render.getGameResolution()
+    render.setFont(fontBody)
+
+    for index, toast in ipairs(EyeLaserUI.toasts) do
+        local timeLeft = math.max(toast.expire - now, 0)
+        local alpha = math.floor(math.min(timeLeft, 1) * 230)
+        local y = 70 + ((index - 1) * 64)
+
+        render.setColor(Color(0, 0, 0, math.floor(alpha * 0.75)))
+        render.drawRect((w * 0.5) - 300, y, 600, 54)
+
+        render.setColor(Color(toast.color.r, toast.color.g, toast.color.b, alpha))
+        render.drawRect((w * 0.5) - 300, y, 600, 3)
+
+        render.setColor(Color(toast.color.r, toast.color.g, toast.color.b, alpha))
+        render.setFont(fontBody)
+        render.drawSimpleText(w * 0.5, y + 7, toast.title, 1)
+
+        render.setColor(Color(255, 255, 255, alpha))
+        render.setFont(fontSmall)
+        render.drawSimpleText(w * 0.5, y + 30, toast.message, 1)
+    end
+end
+
+hook.add("DrawHUD", "EyeLaserPowerHUD", function()
+    drawToasts()
+    drawPowerPanel()
 end)
 
 return EyeLaserUI
