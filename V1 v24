@@ -16,8 +16,8 @@ if SERVER then
     local eyeL, eyeR
     local laserL, laserR
     
-    -- 
-    local LASER_DAMAGE = 1.5
+    --  
+    local LASER_DAMAGE = 1.9
     local LASER_RADIUS = 1
     local DAMAGE_RADIUS = 3
     
@@ -26,19 +26,60 @@ if SERVER then
     local SND_LOOP = "eyeLaserLoop"
     local SND_END = "eyeLaserEnd"
 
-    --  
-    local spawnPos = chip():getPos() + Vector(0, 0, 15)
+    --   (   50)
+    local spawnPos = chip():getPos() + Vector(0, 0, 50)
     local serum = prop.create(spawnPos, Angle(0, 0, 0), "models/healthvial.mdl", true)
+    local ring = nil
+    
     if isValid(serum) then
-        serum:setRenderMode(RENDERMODE.TRANSCOLOR)
+        serum:setRenderMode(2) --    2  RENDERMODE.TRANSCOLOR  
         serum:setColor(Color(0, 255, 100, 200))
         serum:setMaterial("models/debug/debugwhite")
         
+        --    
         local light = hologram.create(spawnPos, Angle(), "models/holograms/hq_sphere.mdl", Vector(1.5))
         light:setParent(serum)
         light:setMaterial("models/debug/debugwhite")
-        light:setColor(Color(180, 255, 0, 45))
+        light:setRenderMode(3) -- :   3 (Additive  Source Engine)
+        light:setColor(Color(180, 255, 0, 10)) --    10
         light:suppressEngineLighting(true)
+        
+        --    ()    
+        local floorPos = chip():getPos() + Vector(0, 0, 1)
+        ring = hologram.create(floorPos, Angle(0, 0, 0), "models/holograms/hq_torus.mdl", Vector(3, 3, 0.1))
+        if isValid(ring) then
+            ring:setMaterial("models/debug/debugwhite")
+            ring:setRenderMode(3) 
+            ring:setColor(Color(0, 255, 100, 40)) 
+            ring:suppressEngineLighting(true)
+        end
+        
+        --        
+        hook.add("think", "SerumAnimation", function()
+            if not isValid(serum) then 
+                if isValid(ring) then ring:remove() end --     ,    
+                hook.remove("think", "SerumAnimation")
+                return 
+            end
+            
+            local time = timer.curtime()
+            
+            --   
+            local hoverOffset = Vector(0, 0, math.sin(time * 2) * 3)
+            serum:setPos(spawnPos + hoverOffset)
+            
+            --    Y (Yaw)
+            local currentAngle = Angle(0, time * 45, 0)
+            serum:setAngles(currentAngle)
+
+            --    ()
+            if isValid(ring) then
+                ring:setAngles(Angle(0, time * -45, 0)) --    
+                
+                local wave = 3 + math.sin(time * 4) * 0.3 --  
+                ring:setScale(Vector(wave, wave, 0.05))
+            end
+        end)
     end
 
     local function setupLasers(ply)
@@ -60,7 +101,6 @@ if SERVER then
             laserL:addIgnore(ply)
             laserR:addIgnore(ply)
             
-            --  : -  
             net.start("serum_v_event_v22")
             net.writeInt(1, 4) -- 1: Take
             net.writeString(ply:getName())
@@ -72,17 +112,25 @@ if SERVER then
         end
     end
 
+    --     -
+    local function isPlayerInBuildMode(ply)
+        if isValid(ply) and ply.isBUILD then
+            local res = ply:isBUILD()
+            if res == true or res == 1 then 
+                return true 
+            end
+        end
+        return false
+    end
+
     hook.add("playerUse", "SerumInjection", function(ply, ent)
         if ent == serum and not targetPlayer then
-            local isBuild = false
-            if ply.isBUILD then
-                local res = ply:isBUILD()
-                if res == true or res == 1 then isBuild = true end
-            end
-
-            if not isBuild then
+            if not isPlayerInBuildMode(ply) then
                 targetPlayer = ply
-                serum:remove() 
+                
+                if isValid(serum) then serum:remove() end
+                if isValid(ring) then ring:remove() end
+                
                 setupLasers(ply)
             else
                 net.start("serum_v_event_v22")
@@ -91,6 +139,23 @@ if SERVER then
             end
         end
     end)
+
+    local function cleanUp(ply)
+        if isValid(ply) then
+            net.start("serum_v_event_v22")
+            net.writeInt(2, 4) -- 2: Loss
+            net.writeString(ply:getName())
+            net.send()
+        end
+
+        targetPlayer = nil
+        isFiring = false
+        if isValid(eyeL) then eyeL:remove() end
+        if isValid(eyeR) then eyeR:remove() end
+        if isValid(ring) then ring:remove() end
+        
+        chip():remove()
+    end
 
     hook.add("think", "EyeLasersThink", function()
         if not isValid(targetPlayer) or not targetPlayer:isAlive() or not isValid(eyeL) or not isValid(eyeR) then 
@@ -102,6 +167,12 @@ if SERVER then
                 astrosounds.stop(SND_LOOP)
             end
             return 
+        end
+        
+        -- :    -    
+        if isPlayerInBuildMode(targetPlayer) then
+            cleanUp(targetPlayer)
+            return
         end
         
         local shootPos = targetPlayer:getShootPos()
@@ -134,7 +205,6 @@ if SERVER then
                 astrosounds.play(SND_START, Vector(), targetPlayer)
                 astrosounds.play(SND_LOOP, Vector(), targetPlayer)
             end
-            --  targetPlayer  
             if laserL then laserL:think(nil, targetPlayer) end
             if laserR then laserR:think(nil, targetPlayer) end
         else
@@ -148,24 +218,6 @@ if SERVER then
             end
         end
     end)
-    
-    local function cleanUp(ply)
-        --  :   
-        if isValid(ply) then
-            net.start("serum_v_event_v22")
-            net.writeInt(2, 4) -- 2: / (Loss)
-            net.writeString(ply:getName())
-            net.send()
-        end
-
-        targetPlayer = nil
-        isFiring = false
-        if isValid(eyeL) then eyeL:remove() end
-        if isValid(eyeR) then eyeR:remove() end
-        
-        --  
-        chip():remove()
-    end
 
     hook.add("PlayerDeath", "SerumDeath", function(ply)
         if ply == targetPlayer then cleanUp(ply) end
@@ -176,7 +228,7 @@ if SERVER then
     end)
 
 else
-    --  
+    --   
     local scout_sounds = "https://raw.githubusercontent.com/AstricUnion/AstroBots/refs/heads/main/sounds/astroscout/"
     astrosounds.preload("eyeLaserStart", 1, false, false, scout_sounds .. "LaserStart.mp3")
     astrosounds.preload("eyeLaserLoop", 0.6, true, false, scout_sounds .. "LaserLoop.mp3")
@@ -194,13 +246,13 @@ else
             end
         end
 
-        if type == 1 then -- - 
+        if type == 1 then
             showChat(Color(0, 255, 0), "[Vought News] ", plyName .. " has accepted Serum V! Fear the laser eyes.")
-        elseif type == 2 then -- - 
+        elseif type == 2 then
             showChat(Color(255, 50, 0), "[Vought News] ", plyName .. " has died and lost the power of Compound V.")
-        elseif type == 0 then --   ()
+        elseif type == 0 then
             showChat(Color(255, 0, 0), "[Vought] ", "Error! Cannot accept serum in Build Mode.")
-        elseif type == 3 then -- personal V1 instructions
+        elseif type == 3 then
             showChat(Color(180, 255, 0), "[Vought] ", "You injected V1. Hold LMB + RMB to fire your eye lasers.")
         end
     end)
