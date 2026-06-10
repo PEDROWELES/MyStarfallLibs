@@ -1,0 +1,364 @@
+--@name A-Train SuperSpeed V9.2 + Combat
+--@author svinotaq
+--@server
+
+--@include https://raw.githubusercontent.com/AstricUnion/Libs/refs/heads/main/sounds.lua as sounds
+
+require("sounds")
+
+local Ply = owner()
+
+local enabled = false
+local lastToggle = false
+
+local baseSpeed = 1200
+local sprintMult = 2.5
+
+local mainTrail
+local lightningTrail
+
+------------------------------------------------
+-- CREATE TRAILS
+------------------------------------------------
+
+local function createTrails()
+
+    if not (mainTrail and mainTrail:isValid()) then
+
+        mainTrail = holograms.create(
+
+            Ply:getPos(),
+
+            Angle(),
+
+            "models/hunter/misc/sphere025x025.mdl",
+
+            Vector(0.01)
+
+        )
+
+        mainTrail:setParent(Ply)
+
+        mainTrail:setLocalPos(
+            Vector(
+                0,
+                0,
+                45
+            )
+        )
+
+        mainTrail:setColor(
+            Color(
+                0,
+                100,
+                255,
+                0
+            )
+        )
+
+        mainTrail:suppressEngineLighting(true)
+
+        mainTrail:setTrails(
+
+            350,
+
+            0,
+
+            28,
+
+            "trails/laser",
+
+            Color(
+                0,
+                150,
+                255
+            )
+
+        )
+
+    end
+
+
+    if not (lightningTrail and lightningTrail:isValid()) then
+
+        lightningTrail = holograms.create(
+
+            Ply:getPos(),
+
+            Angle(),
+
+            "models/hunter/misc/sphere025x025.mdl",
+
+            Vector(0.01)
+
+        )
+
+        lightningTrail:setParent(Ply)
+
+        lightningTrail:setLocalPos(
+            Vector(
+                0,
+                0,
+                45
+            )
+        )
+
+        lightningTrail:setColor(
+            Color(
+                255,
+                255,
+                255,
+                0
+            )
+        )
+
+        lightningTrail:suppressEngineLighting(true)
+
+        lightningTrail:setTrails(
+
+            35,
+
+            0,
+
+            10,
+
+            "trails/electric",
+
+            Color(
+                120,
+                220,
+                255
+            )
+
+        )
+
+    end
+
+end
+
+------------------------------------------------
+-- REMOVE TRAILS
+------------------------------------------------
+
+local function removeTrails()
+
+    if mainTrail and mainTrail:isValid() then
+
+        mainTrail:remove()
+
+        mainTrail=nil
+
+    end
+
+    -- :       :remove()
+    if lightningTrail and lightningTrail:isValid() then
+
+        lightningTrail:remove()
+
+        lightningTrail=nil
+
+    end
+
+end
+
+------------------------------------------------
+-- THINK
+------------------------------------------------
+
+hook.add(
+
+"think",
+
+"atrain_speed",
+
+function()
+
+    if not Ply:isValid() then return end
+
+    local pressed=
+
+        Ply:keyDown(
+            IN_KEY.USE
+        )
+
+    if pressed and not lastToggle then
+
+        enabled=
+            not enabled
+
+        if enabled then
+
+            createTrails()
+
+        else
+
+            removeTrails()
+
+        end
+
+    end
+
+    lastToggle=pressed
+
+    if not enabled then 
+        --     ,   
+        removeTrails()
+        return 
+    end
+
+    local eye=
+
+        Ply:getEyeAngles()
+
+    local forward=
+        eye:getForward()
+
+    local right=
+        eye:getRight()
+
+    local move=
+        Vector()
+
+    if Ply:keyDown(IN_KEY.FORWARD) then
+        move=move+forward
+    end
+
+    if Ply:keyDown(IN_KEY.BACK) then
+        move=move-forward
+    end
+
+    if Ply:keyDown(IN_KEY.MOVELEFT) then
+        move=move-right
+    end
+
+    if Ply:keyDown(IN_KEY.MOVERIGHT) then
+        move=move+right
+    end
+
+    move.z=0
+
+    -- :    (    0)
+    if move:getLength()<=0 then 
+        removeTrails() --     
+        return 
+    end
+
+    --   , / 
+    createTrails()
+
+    move=
+        move:getNormalized()
+
+    -- COMBAT LOGIC:     MOUSE1 ()
+    if Ply:keyDown(IN_KEY.ATTACK) then
+
+        local pos = Ply:getPos()
+        local min = pos + move * 40 - Vector(20, 20, 10)
+        local max = pos + move * 80 + Vector(20, 20, 70)
+
+        local victims = find.inBox(min, max)
+
+        for _, ent in ipairs(victims) do
+
+            if ent ~= Ply and isValid(ent) and ent:getHealth() > 0 then
+
+                --    (  + )
+                if ent:isPlayer() then
+
+                    Ply:emitSound("physics/body/body_medium_break2.wav", 80, 100)
+                    Ply:emitSound("physics/flesh/flesh_impact_bullet3.wav", 75, 120)
+                    Ply:emitSound("player/bhit_helmet-1.wav", 90, 110)
+
+                    game.blastDamage(ent:getPos(), 20, 500)
+
+                    local velocityPermitted = hasPermission("entities.setVelocity", ent)
+                    if velocityPermitted then
+                        ent:setVelocity(move * 2000)
+                    end
+
+                    break
+
+                --   NPC ( )
+                elseif ent:isNPC() or ent:isValidPhys() then
+
+                    Ply:emitSound("physics/body/body_medium_break2.wav", 80, 100)
+                    Ply:emitSound("physics/flesh/flesh_impact_bullet3.wav", 75, 120)
+
+                    local damagePermitted = hasPermission("entities.applyDamage", ent)
+                    if damagePermitted then
+                        ent:applyDamage(500, nil, Ply, DAMAGE.CRUSH)
+                    end
+
+                    local velocityPermitted = hasPermission("entities.setVelocity", ent)
+                    if velocityPermitted then
+                        local phys = ent:getPhysicsObject()
+                        if isValid(phys) then
+                            phys:setVelocity(move * 1000)
+                        else
+                            ent:setVelocity(move * 1500)
+                        end
+                    end
+
+                    break
+
+                end
+
+            end
+
+        end
+
+    end
+
+    local speed=
+        baseSpeed
+
+    if Ply:keyDown(
+        IN_KEY.SPEED
+    ) then
+
+        speed=
+            speed*sprintMult
+
+    end
+
+    local desired=
+        move*speed
+
+    local vel=
+        Ply:getVelocity()
+
+    local push=
+
+        desired-
+
+        Vector(
+
+            vel.x,
+
+            vel.y,
+
+            0
+
+        )
+
+    Ply:setVelocity(
+        push
+    )
+
+end)
+
+------------------------------------------------
+-- CLEANUP
+------------------------------------------------
+
+hook.add(
+
+"removed",
+
+"cleanup",
+
+function()
+
+    removeTrails()
+
+end)
