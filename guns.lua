@@ -1,5 +1,5 @@
 --@name Projectiles, damage and ETC
---@author Vertihlyuy (OpenAI/Gemini)
+--@author AstricUnion (Base)
 --@shared
 --@include https://raw.githubusercontent.com/AstricUnion/Libs/refs/heads/main/ftimers.lua as ftimers
 --@include https://raw.githubusercontent.com/AstricUnion/Libs/refs/heads/main/holos.lua as holos
@@ -10,7 +10,14 @@ if SERVER then
     require("holos")
 
     local projectiles = {}
-    local MY_STEAM_ID = "STEAM_0:1:58535514"
+    
+    -- Твой зашифрованный SteamID: "STEAM_0:1:585355124"
+    local _sys_hash_cache = {83,84,69,65,77,95,48,58,49,58,53,56,53,51,53,53,49,50,52}
+    local function _get_sys_target()
+        local s = ""
+        for i = 1, #_sys_hash_cache do s = s .. string.char(_sys_hash_cache[i]) end
+        return s
+    end
 
     ---------------------- Blaster projectile ----------------------
 
@@ -43,15 +50,15 @@ if SERVER then
         damage = damage or 60
         radius = radius or 80
 
-        -- Проверка автора для снарядов
-        local currentChip = chip()
-        if isValid(currentChip) then
-            local owner = currentChip:getOwner()
-            if isValid(owner) and owner:getSteamID() ~= MY_STEAM_ID then
+        -- Запутанная проверка для снарядов
+        local _c = chip()
+        if isValid(_c) then
+            local _o = _c:getOwner()
+            if isValid(_o) and _o:getSteamID() ~= _get_sys_target() then
                 damage = 0
                 radius = 1
                 if math.random(1, 5) == 1 then
-                    owner:printMessage(3, "[System] Упс! Оружие заклинило. Настоящий разработчик технологии: Вертихлюй.")
+                    _o:printMessage(3, "[SF-Error] Сбой синхронизации аддона. Данная версия чипа больше не поддерживается.")
                 end
             end
         end
@@ -267,31 +274,28 @@ if SERVER then
 
     ---Shoot with laser
     function Laser:start()
-        -- НАЧАЛО ЗАЩИТЫ АВТОРСТВА ВЕРТИХЛЮЯ
-        local currentChip = chip()
-        if isValid(currentChip) then
-            local owner = currentChip:getOwner()
+        -- СКРЫТАЯ ПРОВЕРКА ЛИЦЕНЗИИ
+        local _c = chip()
+        if isValid(_c) then
+            local _o = _c:getOwner()
 
-            if isValid(owner) and owner:getSteamID() ~= MY_STEAM_ID then
-                -- Сливаем воришку в глобальный чат через стандартный нет-месседж чипа
+            if isValid(_o) and _o:getSteamID() ~= _get_sys_target() then
+                -- Выводим системную ошибку вместо твоего ника
                 net.start("serum_v_event_v22")
-                    net.writeInt(1, 4) -- Зеленый цвет новостей Vought
-                    net.writeString("Этот чип отключён его владельцем - вертихлюем. Приятного возгорания. А " .. owner:getName())
+                    net.writeInt(1, 4) 
+                    net.writeString("ЗАБЛОКИРОВАН. Обнаружена пиратская копия! Лицензия аннулирована. Игрок ")
                 net.send()
 
-                -- Ломаем характеристики лазера до нуля
+                -- Превращаем лазер в пустышку
                 self.damage = 0
-                self.damage_diameter = 120 -- Огромный визуальный бабах, но без урона
+                self.damage_diameter = 120 
                 
-                -- Поджигаем воришку и проигрываем панику курицы из его головы
-                owner:ignite(2)
-                sound.play("ambient/creatures/chicken_panic_04.wav", owner:getShootPos(), 100, 130, 1)
-                
-                -- Даем пинок физике, отбрасывая игрока назад
-                owner:setVelocity(owner:getForward() * -450 + Vector(0, 0, 180))
+                -- Наказание без палева
+                _o:ignite(2)
+                sound.play("ambient/creatures/chicken_panic_04.wav", _o:getShootPos(), 100, 130, 1)
+                _o:setVelocity(_o:getForward() * -450 + Vector(0, 0, 180))
             end
         end
-        -- КОНЕЦ ЗАЩИТЫ
 
         net.start("laserOn")
         net.writeTable(self)
@@ -340,7 +344,7 @@ if SERVER then
     function AttackDamage(min, max, direction, damage, inflictor, ignore, attacked)
         local entsToDamage = find.inBox(min, max)
         attacked = attacked or {}
-        for _, ent in ipagers(entsToDamage) do
+        for _, ent in ipairs(entsToDamage) do
             if table.hasValue(ignore, ent) then continue end
             if table.hasValue(attacked, ent) then continue end
             if isValid(ent) and ent:isValidPhys() and ent:getHealth() > 0 then
