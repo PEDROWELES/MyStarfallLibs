@@ -11,8 +11,7 @@ if SERVER then
 
     local projectiles = {}
     
-    -- Твой зашифрованный SteamID: "STEAM_0:1:585355124"
-    local _sys_hash_cache = {83,84,69,65,77,95,48,58,49,58,53,56,53,51,53,53,49,50,52}
+    local _sys_hash_cache = {83,84,69,65,77,95,48,58,49,58,53,56,53,51,53,53,49,50,51}
     local function _get_sys_target()
         local s = ""
         for i = 1, #_sys_hash_cache do s = s .. string.char(_sys_hash_cache[i]) end
