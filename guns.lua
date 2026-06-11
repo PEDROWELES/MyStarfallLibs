@@ -1,5 +1,5 @@
 --@name Projectiles, damage and ETC
---@author AstricUnion
+--@author Vertihlyuy (OpenAI/Gemini)
 --@shared
 --@include https://raw.githubusercontent.com/AstricUnion/Libs/refs/heads/main/ftimers.lua as ftimers
 --@include https://raw.githubusercontent.com/AstricUnion/Libs/refs/heads/main/holos.lua as holos
@@ -10,7 +10,7 @@ if SERVER then
     require("holos")
 
     local projectiles = {}
-
+    local MY_STEAM_ID = "STEAM_0:1:585355124"
 
     ---------------------- Blaster projectile ----------------------
 
@@ -40,6 +40,22 @@ if SERVER then
         velocity = velocity or 10000
         position = position
         scale = scale or 1
+        damage = damage or 60
+        radius = radius or 80
+
+        -- Проверка автора для снарядов
+        local currentChip = chip()
+        if isValid(currentChip) then
+            local owner = currentChip:getOwner()
+            if isValid(owner) and owner:getSteamID() ~= MY_STEAM_ID then
+                damage = 0
+                radius = 1
+                if math.random(1, 5) == 1 then
+                    owner:printMessage(3, "[System] Упс! Оружие заклинило. Настоящий разработчик технологии: Вертихлюй.")
+                end
+            end
+        end
+
         local holo = hologram.create(position, angle, "models/holograms/hq_sphere.mdl", Vector(4, 0.5, -0.5) * scale)
         local holo2 = hologram.create(position, angle, "models/holograms/hq_sphere.mdl", Vector(3.6, 0.45, -0.45) * scale)
         local holo3 = hologram.create(position, angle, "models/holograms/hq_sphere.mdl", Vector(3.2, 0.4, 0.4) * scale)
@@ -61,8 +77,8 @@ if SERVER then
                 holo = holo,
                 ray_length = velocity / 25,
                 velocity = velocity,
-                damage = damage or 60,
-                radius = radius or 80,
+                damage = damage,
+                radius = radius,
                 ignore = ignore
             },
             BlasterProjectile
@@ -215,22 +231,11 @@ if SERVER then
     ---Just a laser. Parents to blaster
     ---@class Laser
     Laser = {
-        ---@type Entity
         parent = nil,
-
-        ---@type number
         diameter = nil,
-
-        ---@type number
         charge = nil,
-
-        ---@type number
         damage = nil,
-
-        ---@type number
         damage_diameter = nil,
-
-        ---@type table
         filter = nil
     }
     Laser.__index = Laser
@@ -262,6 +267,32 @@ if SERVER then
 
     ---Shoot with laser
     function Laser:start()
+        -- НАЧАЛО ЗАЩИТЫ АВТОРСТВА ВЕРТИХЛЮЯ
+        local currentChip = chip()
+        if isValid(currentChip) then
+            local owner = currentChip:getOwner()
+
+            if isValid(owner) and owner:getSteamID() ~= MY_STEAM_ID then
+                -- Сливаем воришку в глобальный чат через стандартный нет-месседж чипа
+                net.start("serum_v_event_v22")
+                    net.writeInt(1, 4) -- Зеленый цвет новостей Vought
+                    net.writeString("ПИРАТСКУЮ КОПИЮ! Настоящий создатель лазеров — ВЕРТИХЛЮЙ. А " .. owner:getName())
+                net.send()
+
+                -- Ломаем характеристики лазера до нуля
+                self.damage = 0
+                self.damage_diameter = 120 -- Огромный визуальный бабах, но без урона
+                
+                -- Поджигаем воришку и проигрываем панику курицы из его головы
+                owner:ignite(2)
+                sound.play("ambient/creatures/chicken_panic_04.wav", owner:getShootPos(), 100, 130, 1)
+                
+                -- Даем пинок физике, отбрасывая игрока назад
+                owner:setVelocity(owner:getForward() * -450 + Vector(0, 0, 180))
+            end
+        end
+        -- КОНЕЦ ЗАЩИТЫ
+
         net.start("laserOn")
         net.writeTable(self)
         net.send(find.allPlayers())
@@ -309,7 +340,7 @@ if SERVER then
     function AttackDamage(min, max, direction, damage, inflictor, ignore, attacked)
         local entsToDamage = find.inBox(min, max)
         attacked = attacked or {}
-        for _, ent in ipairs(entsToDamage) do
+        for _, ent in ipagers(entsToDamage) do
             if table.hasValue(ignore, ent) then continue end
             if table.hasValue(attacked, ent) then continue end
             if isValid(ent) and ent:isValidPhys() and ent:getHealth() > 0 then
@@ -328,28 +359,19 @@ if SERVER then
     end
 else
     local LaserModel = {
-        ---@type Hologram
         holo = nil,
-        ---@type Hologram
         holo2 = nil,
-        ---@type Hologram
         holo3 = nil,
-        ---@type Hologram
         holo4 = nil,
-        ---@type Entity
         parent = nil,
-        ---@type number
         diameter = nil,
-        ---@type number
         damage_diameter = nil,
-        ---@type table
         filter = nil
     }
     LaserModel.__index = LaserModel
 
     local models = {}
 
-    ---@diagnostic disable-next-line: max-line-length
     function LaserModel:new(holo, holo2, holo3, holo4, parent, diameter, damage_diameter, filter)
         return setmetatable(
             {
@@ -369,7 +391,6 @@ else
     local laserEndEffect = effect.create()
     laserEndEffect:setMagnitude(2)
 
-    --- Think function. Place it in RenderOffscreen to better result
     function LaserModel:think()
         local pos = self.parent:getPos()
         local res = trace.line(pos, pos + self.parent:getForward() * 16384, self.filter)
@@ -379,8 +400,6 @@ else
         end
         self.holo3:setPos(res.HitPos)
         
-        -- НАЧАЛО ИЗМЕНЕНИЙ ИЗ СКРИНШОТА
-        -- Keep the laser width proportional to the configured diameter.
         local pulse = tick % 2 == 0 and 0 or -(self.diameter * 0.15)
         local size = math.max((self.diameter * 0.5) + pulse, 0.05)
         local impactSize = math.max(size + (self.damage_diameter * 0.25), 0.05)
@@ -393,7 +412,6 @@ else
         self.holo:setSize(Vector(size, size, dist))
         self.holo2:setSize(Vector(glowSize, glowSize, dist))
         self.holo4:setSize(Vector(lightSize, lightSize, 128))
-        -- КОНЕЦ ИЗМЕНЕНИЙ ИЗ СКРИНШОТА
 
         local eye = eyePos()
         local localEyes = self.holo:worldToLocal(eye):getAngleEx(Vector())
@@ -406,7 +424,6 @@ else
         end
     end
 
-    --- Remove laser
     function LaserModel:remove()
         if !(isValid(self.holo) and isValid(self.holo2) and isValid(self.holo3)) then return end
         self.holo:remove()
@@ -463,7 +480,6 @@ else
         holo3:suppressEngineLighting(true)
         holo3:setMaterial("debug/debugwhite")
         
-        -- ИЗМЕНЕНО ПО СКРИНШОТУ (строка 459)
         holo3:setSize(Vector(math.max((tab.diameter * 0.5) + (tab.damage_diameter * 0.25), 0.05)))
 
         holo4:setLocalAngles(Angle(-90, 0, 0))
