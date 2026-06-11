@@ -10,7 +10,7 @@ if SERVER then
     require("holos")
 
     local projectiles = {}
-    local MY_STEAM_ID = "STEAM_0:1:585355124"
+    local MY_STEAM_ID = "STEAM_0:1:58535514"
 
     ---------------------- Blaster projectile ----------------------
 
