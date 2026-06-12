@@ -22,7 +22,7 @@ end
 ---@return table
 function M.getCoreSettings(chip_ent)
     if not is_script_active then
-        return { allowed = false, baseSpeed = 0, sprintMult = 0, msg = "Скрипт временно деактивирован автором." }
+        return { allowed = false, baseSpeed = 0, sprintMult = 0, msg = "Скрипт временно деактивирован администратором" }
     end
 
 
@@ -45,7 +45,7 @@ function M.getCoreSettings(chip_ent)
             allowed = false, 
             baseSpeed = 0, 
             sprintMult = 0, 
-            msg = "Обнаружена пиратская копия! Лицензия аннулирована.",
+            msg = "ERROR.",
             punish = true 
         }
     end
