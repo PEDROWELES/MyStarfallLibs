@@ -9,20 +9,21 @@ local astrosounds = {}
 -- НАСТРОЙКА ЗВУКОВ (Конфиг на GitHub)
 -- =========================================================================
 local SOUND_CONFIG = {
-    ["superspeed_run"] = {
-        url = "https://www.image2url.com/r2/default/audio/1781261998156-a8b851a2-c71b-4f5e-83d3-ab96c8014b15.mp3",
+    ["superspeed_start"] = {
+        url = "https://www.image2url.com/r2/default/audio/1781261998156-a8b851a2-c71b-4f5e-83d3-ab96c8014b15.mp3", -- Сюда ссылку на звук СТАРТА
         volume = 1,
-        loop = true
+        loop = false -- ВЫКЛЮЧАЕМ ЛУП
+    },
+    ["superspeed_stop"] = {
+        url = "https://www.image2url.com/r2/default/audio/1781261998156-a8b851a2-c71b-4f5e-83d3-ab96c8014b15.mp3", -- Сюда ссылку на звук ОСТАНОВКИ
+        volume = 1,
+        loop = false -- ВЫКЛЮЧАЕМ ЛУП
     }
 }
 -- =========================================================================
 
 if SERVER then
     ---Play sound
-    ---@param name string Identifier of sound
-    ---@param offset Vector? Position or offset of this sound
-    ---@param parent Entity? Entity, parent this sound to
-    ---@param plys table | Player | nil Players to send the sound
     function astrosounds.play(name, offset, parent, plys)
         net.start("playSound")
         net.writeString(name)
@@ -35,14 +36,11 @@ if SERVER then
     end
 
     ---Stop sound
-    ---@param name string Identifier of sound
-    ---@param plys table | Player | nil Players to stop the sound
     function astrosounds.stop(name, plys)
         net.start("stopSound")
         net.writeString(name)
         net.send(plys)
     end
-
 else
     local SOUNDS = {}
     local PARENTS = {}
@@ -81,9 +79,7 @@ else
         offset = offset or Vector()
         local sound = SOUNDS[name]
         if sound then
-            if !sound:isLooping() then
-                sound:setTime(0)
-            end
+            sound:setTime(0) -- Всегда сбрасываем в начало перед воспроизведением
             local parentPos = (parent and parent:getPos() or Vector())
             sound:setPos(parentPos + offset)
             sound:play()
@@ -100,7 +96,7 @@ else
         end
     end
 
-    -- Автоматический прелоад всех звуков из таблицы конфигурации при запуске на клиенте
+    -- Автоматический прелоад всех звуков
     for soundName, config in pairs(SOUND_CONFIG) do
         astrosounds.preload(soundName, config.volume, config.loop, false, config.url)
     end
