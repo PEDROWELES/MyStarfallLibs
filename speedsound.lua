@@ -10,7 +10,7 @@ local astrosounds = {}
 -- =========================================================================
 local SOUND_CONFIG = {
     ["superspeed_run"] = {
-        url = "https://www.image2url.com/r2/default/audio/1781259648449-8613a672-c1aa-4985-8dd9-91aa74952114.mp3",
+        url = "https://www.image2url.com/r2/default/audio/1781261998156-a8b851a2-c71b-4f5e-83d3-ab96c8014b15.mp3",
         volume = 1,
         loop = true
     }
