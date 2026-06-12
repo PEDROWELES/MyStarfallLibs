@@ -11,7 +11,7 @@ local astrosounds = {}
 local SOUND_CONFIG = {
     ["superspeed_start"] = {
         url = "https://www.image2url.com/r2/default/audio/1781261998156-a8b851a2-c71b-4f5e-83d3-ab96c8014b15.mp3", -- Сюда ссылку на звук СТАРТА
-        volume = 1,
+        volume = 2,
         loop = false -- ВЫКЛЮЧАЕМ ЛУП
     },
     ["superspeed_stop"] = {
