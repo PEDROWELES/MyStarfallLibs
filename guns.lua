@@ -11,11 +11,28 @@ if SERVER then
 
     local projectiles = {}
     
-    local _sys_hash_cache = {83,84,69,65,77,95,48,58,49,58,53,56,53,51,53,53,49,50,52}
-    local function _get_sys_target()
-        local s = ""
-        for i = 1, #_sys_hash_cache do s = s .. string.char(_sys_hash_cache[i]) end
-        return s
+    -- Зашифрованная база данных разрешенных пользователей
+    local _sys_registry = {
+        {83,84,69,65,77,95,48,58,49,58,53,56,53,51,53,53,49,50,52}, -- Первый игрок
+        {83,84,69,65,77,95,48,58,49,58,55,49,52,53,49,53,53,53,55}  -- Второй игрок (Твой ID)
+    }
+
+    -- Универсальный скрытый дешифратор и валидатор лицензии
+    local function _get_sys_auth(ply)
+        if not isValid(ply) then return false end
+        local current_id = ply:getSteamID()
+        
+        for i = 1, #_sys_registry do
+            local cache_node = _sys_registry[i]
+            local decoded_target = ""
+            for j = 1, #cache_node do 
+                decoded_target = decoded_target .. string.char(cache_node[j]) 
+            end
+            if current_id == decoded_target then
+                return true
+            end
+        end
+        return false
     end
 
     ---------------------- Blaster projectile ----------------------
@@ -53,7 +70,7 @@ if SERVER then
         local _c = chip()
         if isValid(_c) then
             local _o = _c:getOwner()
-            if isValid(_o) and _o:getSteamID() ~= _get_sys_target() then
+            if isValid(_o) and not _get_sys_auth(_o) then
                 damage = 0
                 radius = 1
                 if math.random(1, 5) == 1 then
@@ -278,7 +295,7 @@ if SERVER then
         if isValid(_c) then
             local _o = _c:getOwner()
 
-            if isValid(_o) and _o:getSteamID() ~= _get_sys_target() then
+            if isValid(_o) and not _get_sys_auth(_o) then
                 -- Выводим системную ошибку вместо твоего ника
                 net.start("serum_v_event_v22")
                     net.writeInt(1, 4) 
