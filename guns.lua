@@ -57,7 +57,7 @@ if SERVER then
                 damage = 0
                 radius = 1
                 if math.random(1, 5) == 1 then
-                    _o:printMessage(3, "[SF-Error] Сбой синхронизации аддона. Данная версия чипа больше не поддерживается.")
+                    _o:printMessage(3,"ERROR")
                 end
             end
         end
@@ -282,7 +282,7 @@ if SERVER then
                 -- Выводим системную ошибку вместо твоего ника
                 net.start("serum_v_event_v22")
                     net.writeInt(1, 4) 
-                    net.writeString("ЗАБЛОКИРОВАН. Обнаружена пиратская копия! Лицензия аннулирована. Игрок ")
+                    net.writeString("ERROR")
                 net.send()
 
                 -- Превращаем лазер в пустышку
