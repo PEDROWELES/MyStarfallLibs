@@ -199,7 +199,7 @@ function ui.syncDingus(nextFire, nextSwarm, nextPurr, nextBomb)
     ui.setCooldown("bomb", nextBomb, abilities.bomb.cooldown)
 end
 
-hook.add("render", "dingus_cute_ascii_ui", function()
+local function drawCuteUi()
     if not enabled then return end
 
     local screenW, screenH = render.getGameResolution()
@@ -207,6 +207,8 @@ hook.add("render", "dingus_cute_ascii_ui", function()
 
     drawAsciiCat(screenW)
     drawCooldowns(screenW, screenH)
-end)
+end
+
+hook.add("DrawHUD", "dingus_cute_ascii_ui", drawCuteUi)
 
 return ui
