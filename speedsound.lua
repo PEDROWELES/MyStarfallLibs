@@ -5,36 +5,13 @@
 ---@class astrosounds
 local astrosounds = {}
 
--- =========================================================================
--- НАСТРОЙКА ЗВУКОВ (Конфиг на GitHub)
--- =========================================================================
-local SOUND_CONFIG = {
-    ["superspeed_start"] = {
-        url = "https://www.image2url.com/r2/default/audio/1781261998156-a8b851a2-c71b-4f5e-83d3-ab96c8014b15.mp3", -- Ссылка на звук СТАРТА
-        volume = 1,
-        loop = false
-    },
-    ["superspeed_start_boost"] = { -- Дополнительный слой для увеличения громкости в 1.5 раза
-        url = "https://www.image2url.com/r2/default/audio/1781261998156-a8b851a2-c71b-4f5e-83d3-ab96c8014b15.mp3",
-        volume = 0.5, -- Добавляем 50% громкости к основному звуку
-        loop = false
-    }
-    -- Звук "superspeed_stop" полностью удалён из конфига, поэтому он больше не воспроизведётся
-}
--- =========================================================================
-
 if SERVER then
     ---Play sound
+    ---@param name string Identifier of sound
+    ---@param offset Vector? Position or offset of this sound
+    ---@param parent Entity? Entity, parent this sound to
+    ---@param plys table | Player | nil Players to send the sound
     function astrosounds.play(name, offset, parent, plys)
-        -- Перехватываем воспроизведение старта, чтобы наложить буст громкости
-        if name == "superspeed_start" then
-            net.start("playSound") net.writeString("superspeed_start") net.writeVector(offset or Vector()) net.writeBool(parent ~= nil) if parent then net.writeEntity(parent) end net.send(plys)
-            net.start("playSound") net.writeString("superspeed_start_boost") net.writeVector(offset or Vector()) net.writeBool(parent ~= nil) if parent then net.writeEntity(parent) end net.send(plys)
-            return
-        end
-
-        if name == "superspeed_stop" then return end -- Игнорируем вызовы остановки, если они остались в чипе сыворотки
-
         net.start("playSound")
         net.writeString(name)
         net.writeVector(offset or Vector())
@@ -45,13 +22,16 @@ if SERVER then
         net.send(plys)
     end
 
+
     ---Stop sound
+    ---@param name string Identifier of sound
+    ---@param plys table | Player | nil Players to stop the sound
     function astrosounds.stop(name, plys)
-        if name == "superspeed_stop" then return end
         net.start("stopSound")
         net.writeString(name)
         net.send(plys)
     end
+
 else
     local SOUNDS = {}
     local PARENTS = {}
@@ -62,12 +42,20 @@ else
     end
 
     ---Preload sound
+    ---@param name string Name to identify this sound
+    ---@param volume number Volume of this sound
+    ---@param loop boolean Loop this sound
+    ---@param play boolean Play this sound after preload
+    ---@param url string URL to download sound
     function astrosounds.preload(name, volume, loop, play, url)
         local noplay = (!play and " noplay" or "")
         bass.loadURL(url, "3d noblock" .. noplay, function(snd, _, errname)
             if !snd then
                 local attempts = ERRORS[name] or 3
-                message(string.format("Sound \"%s\" error: %s. Attempts remain: %i", name, errname, attempts))
+                message(string.format(
+                    "Sound \"%s\" error: %s. Attempts remain: %i",
+                    name, errname, attempts
+                ))
 
                 if attempts and attempts > 0 then
                     ERRORS[name] = attempts - 1
@@ -77,7 +65,6 @@ else
                 end
                 return
             end
- 
             SOUNDS[name] = snd
             message(string.format("Sound \"%s\" loaded!", name))
             snd:setVolume(volume)
@@ -85,24 +72,21 @@ else
         end)
     end
 
-    ---Play sound
-    function astrosounds.play(name, offset, parent)
-        if name == "superspeed_stop" then return end
-        
-        -- Если на клиенте вызван старт, также дублируем его с бустом громкости
-        if name == "superspeed_start" and SOUNDS["superspeed_start_boost"] then
-            local soundBoost = SOUNDS["superspeed_start_boost"]
-            soundBoost:setTime(0)
-            local pPos = (parent and parent:getPos() or Vector())
-            soundBoost:setPos(pPos + (offset or Vector()))
-            soundBoost:play()
-            PARENTS["superspeed_start_boost"] = {parent, offset or Vector()}
-        end
+    astrosounds.preload("dingusPickup", 1, false, false, "https://www.myinstants.com/media/sounds/meowrgh.mp3")
+    astrosounds.preload("dingusKill", 1, false, false, "https://www.myinstants.com/media/sounds/meow-1.mp3")
 
+
+    ---Play sound
+    ---@param name string Identifier of sound
+    ---@param offset Vector? Position or offset of this sound
+    ---@param parent Entity? Entity, parent this sound to
+    function astrosounds.play(name, offset, parent)
         offset = offset or Vector()
         local sound = SOUNDS[name]
         if sound then
-            sound:setTime(0) 
+            if !sound:isLooping() then
+                sound:setTime(0)
+            end
             local parentPos = (parent and parent:getPos() or Vector())
             sound:setPos(parentPos + offset)
             sound:play()
@@ -110,24 +94,15 @@ else
         end
     end
 
+
     ---Stop sound
+    ---@param name string Identifier of sound
     function astrosounds.stop(name)
-        if name == "superspeed_stop" then return end
-        if name == "superspeed_start" and SOUNDS["superspeed_start_boost"] then
-            SOUNDS["superspeed_start_boost"]:pause()
-            SOUNDS["superspeed_start_boost"]:setTime(0)
-        end
-        
         local sound = SOUNDS[name]
         if sound then
             sound:pause()
             sound:setTime(0)
         end
-    end
-
-    -- Автоматический прелоад всех звуков
-    for soundName, config in pairs(SOUND_CONFIG) do
-        astrosounds.preload(soundName, config.volume, config.loop, false, config.url)
     end
 
     net.receive("playSound", function()
@@ -157,5 +132,6 @@ else
         end
     end)
 end
+
 
 return astrosounds
