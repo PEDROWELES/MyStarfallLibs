@@ -1,124 +1,185 @@
---@name Eye Laser UI v2 - Toast API
---@author OpenAI
+--@name Dingus Cute UI
+--@author vertihluy
 --@client
 
-local fontTitle = render.createFont("Montserrat", 28, 700, true)
-local fontBody = render.createFont("Montserrat", 20, 500, true)
-local fontSmall = render.createFont("Montserrat", 17, 500, true)
+local ui = {}
 
-local EyeLaserUI = {
-    powers = {},
-    toasts = {}
+local fontTitle = render.createFont("Consolas", 26, 700, true, false, false, false, 0, true, 0)
+local fontBody = render.createFont("Consolas", 18, 500, true, false, false, false, 0, true, 0)
+local fontAscii = render.createFont("Consolas", 24, 700, true, false, false, false, 0, true, 0)
+
+local PANEL_BG = Color(22, 10, 18, 180)
+local PANEL_BORDER = Color(255, 130, 210, 255)
+local PANEL_SOFT = Color(255, 190, 235, 80)
+local TEXT_MAIN = Color(255, 210, 240, 255)
+local TEXT_DIM = Color(255, 175, 225, 210)
+local BAR_FILL = Color(255, 120, 205, 255)
+local BAR_READY = Color(255, 185, 235, 255)
+local BAR_BG = Color(60, 20, 44, 210)
+
+local abilities = {
+    shot = { id = "shot", key = "LMB", label = "dingus", cooldown = 0.9, readyAt = 0 },
+    volley = { id = "volley", key = "RMB", label = "swarm", cooldown = 3.2, readyAt = 0 },
+    purr = { id = "purr", key = "E", label = "purr", cooldown = 1.8, readyAt = 0 },
+    bomb = { id = "bomb", key = "R", label = "maxwell", cooldown = 1.2, readyAt = 0 },
 }
 
-local function cloneRows(rows)
-    local result = {}
-    for index, row in ipairs(rows or {}) do
-        result[index] = {
-            label = row.label or "",
-            detail = row.detail or "",
-            color = row.color or Color(180, 255, 0)
-        }
-    end
-    return result
+local order = { "shot", "volley", "purr", "bomb" }
+local enabled = true
+local title = "dingus ui"
+
+local asciiCat = {
+    " /\\_/\\\\",
+    "( =^.^= )",
+    " (\")_(\")"
+}
+
+local function now()
+    return timer.curtime()
 end
 
-function EyeLaserUI:setPowers(rows)
-    self.powers = cloneRows(rows)
+local function clamp01(value)
+    return math.max(0, math.min(1, value))
 end
 
-function EyeLaserUI:clearPowers()
-    self.powers = {}
+local function getPercent(entry)
+    if entry.cooldown <= 0 then return 1 end
+    return clamp01(1 - math.max(entry.readyAt - now(), 0) / entry.cooldown)
 end
 
-function EyeLaserUI:pushToast(title, message, color, duration)
-    table.insert(self.toasts, 1, {
-        title = title or "COMPOUND V",
-        message = message or "",
-        color = color or Color(180, 255, 0),
-        expire = timer.curtime() + (duration or 6)
-    })
-
-    while #self.toasts > 4 do
-        table.remove(self.toasts)
-    end
+local function getTimeLeft(entry)
+    return math.max(entry.readyAt - now(), 0)
 end
 
-function EyeLaserUI:clearToasts()
-    self.toasts = {}
+local function makeBar(percent, width)
+    local filled = math.floor(clamp01(percent) * width + 0.5)
+    return "[" .. string.rep("#", filled) .. string.rep("-", width - filled) .. "]"
 end
 
-local function drawPowerPanel()
-    if #EyeLaserUI.powers == 0 then return end
+local function drawPanel(x, y, w, h)
+    render.setColor(PANEL_BG)
+    render.drawRect(x, y, w, h)
+    render.setColor(PANEL_SOFT)
+    render.drawRect(x + 3, y + 3, w - 6, 2)
+    render.setColor(PANEL_BORDER)
+    render.drawRectOutline(x, y, w, h, 2)
+end
 
-    local w, h = render.getGameResolution()
-    local panelW = 720
-    local rowH = 30
-    local panelH = 54 + (#EyeLaserUI.powers * rowH)
-    local x = math.floor((w - panelW) * 0.5)
-    local y = math.floor(h * 0.77)
+local function drawAsciiCat(screenW)
+    local sway = math.sin(now() * 1.8) * 8
+    local panelW = 244
+    local panelH = 112
+    local x = screenW - panelW - 26 + sway
+    local y = 24
 
-    render.setColor(Color(0, 0, 0, 170))
-    render.drawRect(x, y, panelW, panelH)
+    drawPanel(x, y, panelW, panelH)
 
-    render.setColor(Color(180, 255, 0, 255))
-    render.drawRect(x, y, panelW, 4)
-
-    render.setColor(Color(200, 255, 120))
     render.setFont(fontTitle)
-    render.drawSimpleText(w * 0.5, y + 10, "COMPOUND V ACTIVE", 1)
+    render.setColor(TEXT_MAIN)
+    render.drawSimpleText(x + 16, y + 10, "== " .. title .. " ==", TEXT_ALIGN.LEFT)
+
+    render.setFont(fontAscii)
+    render.drawSimpleText(x + 16, y + 42, asciiCat[1], TEXT_ALIGN.LEFT)
+    render.drawSimpleText(x + 16, y + 66, asciiCat[2], TEXT_ALIGN.LEFT)
+    render.drawSimpleText(x + 16, y + 90, asciiCat[3], TEXT_ALIGN.LEFT)
+end
+
+local function drawCooldowns(screenW, screenH)
+    local panelW = 370
+    local panelH = 168
+    local x = screenW - panelW - 26
+    local y = screenH - panelH - 26
+
+    drawPanel(x, y, panelW, panelH)
+
+    render.setFont(fontTitle)
+    render.setColor(TEXT_MAIN)
+    render.drawSimpleText(x + 16, y + 10, "== cooldowns ==", TEXT_ALIGN.LEFT)
 
     render.setFont(fontBody)
-    for index, row in ipairs(EyeLaserUI.powers) do
-        local rowY = y + 42 + ((index - 1) * rowH)
-        render.setColor(Color(255, 255, 255, 20))
-        render.drawRect(x + 16, rowY + 23, panelW - 32, 1)
+    for index, id in ipairs(order) do
+        local entry = abilities[id]
+        local percent = getPercent(entry)
+        local bar = makeBar(percent, 16)
+        local timeLeft = getTimeLeft(entry)
+        local textY = y + 38 + ((index - 1) * 28)
+        local rightText = timeLeft > 0 and string.format("%.1fs", timeLeft) or "ready"
 
-        render.setColor(row.color)
-        render.drawText(x + 24, rowY, row.label)
+        render.setColor(TEXT_DIM)
+        render.drawSimpleText(x + 16, textY, entry.key, TEXT_ALIGN.LEFT)
 
-        render.setColor(Color(255, 255, 255))
-        render.drawText(x + 220, rowY, row.detail)
+        render.setColor(percent >= 1 and BAR_READY or BAR_FILL)
+        render.drawSimpleText(x + 70, textY, bar, TEXT_ALIGN.LEFT)
+
+        render.setColor(TEXT_MAIN)
+        render.drawSimpleText(x + 230, textY, entry.label, TEXT_ALIGN.LEFT)
+        render.drawSimpleText(x + panelW - 16, textY, rightText, TEXT_ALIGN.RIGHT)
     end
 end
 
-local function drawToasts()
-    local now = timer.curtime()
-    for index = #EyeLaserUI.toasts, 1, -1 do
-        if EyeLaserUI.toasts[index].expire <= now then
-            table.remove(EyeLaserUI.toasts, index)
+function ui.setEnabled(state)
+    enabled = state and true or false
+end
+
+function ui.setTitle(newTitle)
+    title = tostring(newTitle or title)
+end
+
+function ui.defineAbility(id, key, label, cooldown)
+    if not id then return end
+    abilities[id] = abilities[id] or {}
+    abilities[id].id = id
+    abilities[id].key = key or abilities[id].key or "?"
+    abilities[id].label = label or abilities[id].label or id
+    abilities[id].cooldown = cooldown or abilities[id].cooldown or 1
+    abilities[id].readyAt = abilities[id].readyAt or 0
+end
+
+function ui.setCooldown(id, readyAt, cooldown)
+    local entry = abilities[id]
+    if not entry then return end
+    entry.readyAt = readyAt or 0
+    if cooldown then
+        entry.cooldown = cooldown
+    end
+end
+
+function ui.use(id, cooldown)
+    local entry = abilities[id]
+    if not entry then return end
+    entry.readyAt = now() + (cooldown or entry.cooldown or 0)
+end
+
+function ui.setCooldowns(state)
+    if not state then return end
+    for id, data in pairs(state) do
+        if abilities[id] then
+            if data.readyAt then
+                abilities[id].readyAt = data.readyAt
+            end
+            if data.cooldown then
+                abilities[id].cooldown = data.cooldown
+            end
         end
     end
-
-    if #EyeLaserUI.toasts == 0 then return end
-
-    local w = render.getGameResolution()
-    render.setFont(fontBody)
-
-    for index, toast in ipairs(EyeLaserUI.toasts) do
-        local timeLeft = math.max(toast.expire - now, 0)
-        local alpha = math.floor(math.min(timeLeft, 1) * 230)
-        local y = 70 + ((index - 1) * 64)
-
-        render.setColor(Color(0, 0, 0, math.floor(alpha * 0.75)))
-        render.drawRect((w * 0.5) - 300, y, 600, 54)
-
-        render.setColor(Color(toast.color.r, toast.color.g, toast.color.b, alpha))
-        render.drawRect((w * 0.5) - 300, y, 600, 3)
-
-        render.setColor(Color(toast.color.r, toast.color.g, toast.color.b, alpha))
-        render.setFont(fontBody)
-        render.drawSimpleText(w * 0.5, y + 7, toast.title, 1)
-
-        render.setColor(Color(255, 255, 255, alpha))
-        render.setFont(fontSmall)
-        render.drawSimpleText(w * 0.5, y + 30, toast.message, 1)
-    end
 end
 
-hook.add("DrawHUD", "EyeLaserPowerHUD", function()
-    drawToasts()
-    drawPowerPanel()
+function ui.syncDingus(nextFire, nextSwarm, nextPurr, nextBomb)
+    ui.setCooldown("shot", nextFire, abilities.shot.cooldown)
+    ui.setCooldown("volley", nextSwarm, abilities.volley.cooldown)
+    ui.setCooldown("purr", nextPurr, abilities.purr.cooldown)
+    ui.setCooldown("bomb", nextBomb, abilities.bomb.cooldown)
+end
+
+hook.add("render", "dingus_cute_ascii_ui", function()
+    if not enabled then return end
+
+    local screenW, screenH = render.getGameResolution()
+    if not screenW or not screenH then return end
+
+    drawAsciiCat(screenW)
+    drawCooldowns(screenW, screenH)
 end)
 
-return EyeLaserUI
+return ui
+
