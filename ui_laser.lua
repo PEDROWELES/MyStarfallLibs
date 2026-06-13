@@ -22,15 +22,15 @@ local BAR_BG = Color(88, 36, 85, 255)
 local BAR_OFF = Color(57, 22, 54, 255)
 
 local abilities = {
-    shot = { id = "shot", key = "LMB", label = "dingus", cooldown = 0.9, readyAt = 0 },
-    volley = { id = "volley", key = "RMB", label = "swarm", cooldown = 3.2, readyAt = 0 },
-    purr = { id = "purr", key = "E", label = "purr", cooldown = 1.8, readyAt = 0 },
-    bomb = { id = "bomb", key = "R", label = "maxwell", cooldown = 1.2, readyAt = 0 },
+    shot = { id = "shot", key = "LMB", label = "АТАКА", cooldown = 0.9, readyAt = 0 },
+    volley = { id = "volley", key = "RMB", label = "УЛЬТА", cooldown = 3.2, readyAt = 0 },
+    purr = { id = "purr", key = "E", label = "МУР :3", cooldown = 1.8, readyAt = 0 },
+    bomb = { id = "bomb", key = "R", label = "ДОП.", cooldown = 1.2, readyAt = 0 },
 }
 
 local order = { "shot", "volley", "purr", "bomb" }
 local enabled = true
-local title = "DINGUS UI"
+local title = "ДИНГУС"
 local face = "(＾• ω •＾)"
 
 local function now()
@@ -63,7 +63,7 @@ end
 
 local function formatTime(seconds)
     if seconds <= 0 then
-        return "READY"
+        return "ГОТОВО"
     end
     return string.format("%.3fs", seconds)
 end
@@ -93,7 +93,7 @@ local function drawAsciiCat(screenW)
     local sway = math.sin(now() * 1.8) * 6
     local panelW = 286
     local panelH = 98
-    local x = screenW - panelW - 26 + sway
+    local x = 26 + sway
     local y = 24
 
     drawPanel(x, y, panelW, panelH)
@@ -104,7 +104,7 @@ local function drawAsciiCat(screenW)
 
     render.setFont(fontTiny)
     render.setColor(TEXT_DIM)
-    render.drawSimpleText(x + 16, y + 34, "PINK OVERDOSE MODE", TEXT_ALIGN.LEFT)
+    render.drawSimpleText(x + 16, y + 34, "by вертихлюй", TEXT_ALIGN.LEFT)
 
     render.setFont(fontFace)
     render.setColor(TEXT_MAIN)
@@ -113,21 +113,17 @@ end
 
 local function drawCooldowns(screenW, screenH)
     local panelW = 384
-    local panelH = 192
+    local panelH = 164
     local x = screenW - panelW - 26
     local y = screenH - panelH - 26
 
     drawPanel(x, y, panelW, panelH)
 
-    render.setFont(fontTitle)
-    render.setColor(TEXT_MAIN)
-    render.drawSimpleText(x + 16, y + 10, "COOLDOWNS", TEXT_ALIGN.LEFT)
-
     for index, id in ipairs(order) do
         local entry = abilities[id]
         local percent = getPercent(entry)
         local timeLeft = getTimeLeft(entry)
-        local rowY = y + 40 + ((index - 1) * 35)
+        local rowY = y + 18 + ((index - 1) * 35)
         local fillColor = percent >= 1 and BAR_READY or (index % 2 == 0 and BAR_FILL_ALT or BAR_FILL)
 
         render.setFont(fontTiny)
