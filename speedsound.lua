@@ -53,6 +53,8 @@ else
     local LOADING = {}
     local PENDING_PLAYS = {}
     local PENDING_PITCH = {}
+    local DEFAULT_FADE_MIN = 50
+    local DEFAULT_FADE_MAX = 300
 
     local function message(...)
         printConsole(Color(255, 0, 0), "[AstroSound] ", Color(255, 255, 255), ...)
@@ -126,6 +128,7 @@ else
             snd:setVolume(volume)
             snd:setLooping(loop)
             snd:setPitch(PENDING_PITCH[name] or 1)
+            snd:setFade(DEFAULT_FADE_MIN, DEFAULT_FADE_MAX, true)
 
             if play then
                 playLoadedSound(name, Vector(), nil, PENDING_PITCH[name] or 1)
@@ -135,9 +138,10 @@ else
     end
 
     astrosounds.preload("dingusPickup", 1, false, false, "https://www.myinstants.com/media/sounds/meowrgh.mp3")
-    astrosounds.preload("dingusKill", 1, false, false, "https://www.myinstants.com/media/sounds/meow-1.mp3")
+    astrosounds.preload("dingusShoot", 1, false, false, "https://www.myinstants.com/media/sounds/meow-1.mp3")
     astrosounds.preload("dingusImpact", 1, false, false, "https://www.myinstants.com/media/sounds/meowrgh.mp3")
     astrosounds.preload("maxwellTheme", 0.8, true, false, "https://www.myinstants.com/media/sounds/maxwell-the-cat-theme.mp3")
+    astrosounds.preload("maxwellThemePickup", 0.22, true, false, "https://www.myinstants.com/media/sounds/maxwell-the-cat-theme.mp3")
     astrosounds.preload("maxwellBoom", 1, false, false, "https://www.myinstants.com/media/sounds/minecraft-explosion-meme-sound-effect.mp3")
 
 
