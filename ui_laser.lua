@@ -32,6 +32,8 @@ local order = { "shot", "volley", "purr", "bomb" }
 local enabled = true
 local title = "ДИНГУС"
 local face = "(＾• ω •＾)"
+local promptText = nil
+local promptExpire = 0
 
 local function now()
     return timer.curtime()
@@ -90,25 +92,20 @@ local function drawBattery(x, y, w, h, percent, fillColor)
 end
 
 local function drawAsciiCat(screenW)
-    local sway = math.sin(now() * 1.8) * 6
-    local panelW = 286
-    local panelH = 98
-    local x = 26 + sway
+    local x = 26
     local y = 24
-
-    drawPanel(x, y, panelW, panelH)
 
     render.setFont(fontTitle)
     render.setColor(TEXT_MAIN)
-    render.drawSimpleText(x + 14, y + 10, title, TEXT_ALIGN.LEFT)
+    render.drawSimpleText(x, y, title, TEXT_ALIGN.LEFT)
 
     render.setFont(fontTiny)
     render.setColor(TEXT_DIM)
-    render.drawSimpleText(x + 16, y + 34, "by вертихлюй", TEXT_ALIGN.LEFT)
+    render.drawSimpleText(x, y + 24, "by вертихлюй", TEXT_ALIGN.LEFT)
 
     render.setFont(fontFace)
     render.setColor(TEXT_MAIN)
-    render.drawSimpleText(x + 16, y + 58, face, TEXT_ALIGN.LEFT)
+    render.drawSimpleText(x, y + 48, face, TEXT_ALIGN.LEFT)
 end
 
 local function drawCooldowns(screenW, screenH)
@@ -139,6 +136,26 @@ local function drawCooldowns(screenW, screenH)
         render.setColor(percent >= 1 and BAR_READY or TEXT_MAIN)
         render.drawSimpleText(x + panelW - 16, rowY - 4, formatTime(timeLeft), TEXT_ALIGN.RIGHT)
     end
+end
+
+local function drawPrompt(screenW, screenH)
+    if not promptText or promptExpire <= now() then return end
+
+    local alphaFrac = math.min(promptExpire - now(), 1)
+    local alpha = math.floor(255 * math.max(alphaFrac, 0))
+    local panelW = 560
+    local panelH = 34
+    local x = math.floor((screenW - panelW) * 0.5)
+    local y = screenH - 86
+
+    render.setColor(Color(PANEL_BG.r, PANEL_BG.g, PANEL_BG.b, math.floor(alpha * 0.82)))
+    render.drawRect(x, y, panelW, panelH)
+    render.setColor(Color(PANEL_BORDER.r, PANEL_BORDER.g, PANEL_BORDER.b, alpha))
+    render.drawRectOutline(x, y, panelW, panelH, 2)
+
+    render.setFont(fontTiny)
+    render.setColor(Color(TEXT_MAIN.r, TEXT_MAIN.g, TEXT_MAIN.b, alpha))
+    render.drawSimpleText(screenW * 0.5, y + 10, promptText, TEXT_ALIGN.CENTER)
 end
 
 function ui.setEnabled(state)
@@ -195,11 +212,17 @@ function ui.syncDingus(nextFire, nextSwarm, nextPurr, nextBomb)
     ui.setCooldown("bomb", nextBomb, abilities.bomb.cooldown)
 end
 
-local function drawCuteUi()
-    if not enabled then return end
+function ui.showPrompt(text, duration)
+    promptText = tostring(text or "")
+    promptExpire = now() + (duration or 5)
+end
 
+local function drawCuteUi()
     local screenW, screenH = render.getGameResolution()
     if not screenW or not screenH then return end
+
+    drawPrompt(screenW, screenH)
+    if not enabled then return end
 
     drawAsciiCat(screenW)
     drawCooldowns(screenW, screenH)
