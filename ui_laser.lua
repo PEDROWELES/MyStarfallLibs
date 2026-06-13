@@ -1,21 +1,25 @@
---@name Dingus Cute UI
+--@name Dingus Cute UI v2 - pixel battery
 --@author vertihluy
 --@client
 
 local ui = {}
 
-local fontTitle = render.createFont("Consolas", 26, 700, true, false, false, false, 0, true, 0)
-local fontBody = render.createFont("Consolas", 18, 500, true, false, false, false, 0, true, 0)
-local fontAscii = render.createFont("Consolas", 24, 700, true, false, false, false, 0, true, 0)
+local fontTitle = render.createFont("Terminal", 28, 700, false, false, false, false, 0, false, 0)
+local fontBody = render.createFont("Terminal", 18, 600, false, false, false, false, 0, false, 0)
+local fontTiny = render.createFont("Small Fonts", 18, 400, false, false, false, false, 0, false, 0)
+local fontFace = render.createFont("Consolas", 22, 700, true, false, false, false, 0, true, 0)
 
-local PANEL_BG = Color(22, 10, 18, 180)
-local PANEL_BORDER = Color(255, 130, 210, 255)
-local PANEL_SOFT = Color(255, 190, 235, 80)
-local TEXT_MAIN = Color(255, 210, 240, 255)
-local TEXT_DIM = Color(255, 175, 225, 210)
-local BAR_FILL = Color(255, 120, 205, 255)
-local BAR_READY = Color(255, 185, 235, 255)
-local BAR_BG = Color(60, 20, 44, 210)
+local PANEL_BG = Color(34, 14, 33, 205)
+local PANEL_BG_INNER = Color(59, 21, 56, 220)
+local PANEL_BORDER = Color(255, 130, 212, 255)
+local PANEL_BORDER_SOFT = Color(255, 198, 236, 255)
+local TEXT_MAIN = Color(255, 228, 246, 255)
+local TEXT_DIM = Color(255, 183, 229, 230)
+local BAR_FILL = Color(255, 114, 194, 255)
+local BAR_FILL_ALT = Color(255, 164, 222, 255)
+local BAR_READY = Color(255, 238, 248, 255)
+local BAR_BG = Color(88, 36, 85, 255)
+local BAR_OFF = Color(57, 22, 54, 255)
 
 local abilities = {
     shot = { id = "shot", key = "LMB", label = "dingus", cooldown = 0.9, readyAt = 0 },
@@ -26,13 +30,8 @@ local abilities = {
 
 local order = { "shot", "volley", "purr", "bomb" }
 local enabled = true
-local title = "dingus ui"
-
-local asciiCat = {
-    " /\\_/\\\\",
-    "( =^.^= )",
-    " (\")_(\")"
-}
+local title = "DINGUS UI"
+local face = "(＾• ω •＾)"
 
 local function now()
     return timer.curtime()
@@ -51,24 +50,49 @@ local function getTimeLeft(entry)
     return math.max(entry.readyAt - now(), 0)
 end
 
-local function makeBar(percent, width)
-    local filled = math.floor(clamp01(percent) * width + 0.5)
-    return "[" .. string.rep("#", filled) .. string.rep("-", width - filled) .. "]"
-end
-
 local function drawPanel(x, y, w, h)
     render.setColor(PANEL_BG)
     render.drawRect(x, y, w, h)
-    render.setColor(PANEL_SOFT)
-    render.drawRect(x + 3, y + 3, w - 6, 2)
+    render.setColor(PANEL_BG_INNER)
+    render.drawRect(x + 4, y + 4, w - 8, h - 8)
+    render.setColor(PANEL_BORDER_SOFT)
+    render.drawRect(x + 4, y + 4, w - 8, 2)
     render.setColor(PANEL_BORDER)
     render.drawRectOutline(x, y, w, h, 2)
 end
 
+local function formatTime(seconds)
+    if seconds <= 0 then
+        return "READY"
+    end
+    return string.format("%.3fs", seconds)
+end
+
+local function drawBattery(x, y, w, h, percent, fillColor)
+    local segments = 10
+    local nubW = 6
+    local innerPad = 4
+    local segmentGap = 3
+    local usableW = w - nubW - innerPad * 2
+    local segmentW = math.floor((usableW - ((segments - 1) * segmentGap)) / segments)
+    local filled = math.floor(clamp01(percent) * segments + 0.0001)
+
+    render.setColor(PANEL_BORDER)
+    render.drawRectOutline(x, y, w, h, 2)
+    render.drawRect(x + w, y + math.floor(h * 0.32), nubW, math.floor(h * 0.36))
+
+    for i = 1, segments do
+        local segX = x + innerPad + ((i - 1) * (segmentW + segmentGap))
+        local color = i <= filled and fillColor or BAR_OFF
+        render.setColor(color)
+        render.drawRect(segX, y + innerPad, segmentW, h - innerPad * 2)
+    end
+end
+
 local function drawAsciiCat(screenW)
-    local sway = math.sin(now() * 1.8) * 8
-    local panelW = 244
-    local panelH = 112
+    local sway = math.sin(now() * 1.8) * 6
+    local panelW = 286
+    local panelH = 98
     local x = screenW - panelW - 26 + sway
     local y = 24
 
@@ -76,17 +100,20 @@ local function drawAsciiCat(screenW)
 
     render.setFont(fontTitle)
     render.setColor(TEXT_MAIN)
-    render.drawSimpleText(x + 16, y + 10, "== " .. title .. " ==", TEXT_ALIGN.LEFT)
+    render.drawSimpleText(x + 14, y + 10, title, TEXT_ALIGN.LEFT)
 
-    render.setFont(fontAscii)
-    render.drawSimpleText(x + 16, y + 42, asciiCat[1], TEXT_ALIGN.LEFT)
-    render.drawSimpleText(x + 16, y + 66, asciiCat[2], TEXT_ALIGN.LEFT)
-    render.drawSimpleText(x + 16, y + 90, asciiCat[3], TEXT_ALIGN.LEFT)
+    render.setFont(fontTiny)
+    render.setColor(TEXT_DIM)
+    render.drawSimpleText(x + 16, y + 34, "PINK OVERDOSE MODE", TEXT_ALIGN.LEFT)
+
+    render.setFont(fontFace)
+    render.setColor(TEXT_MAIN)
+    render.drawSimpleText(x + 16, y + 58, face, TEXT_ALIGN.LEFT)
 end
 
 local function drawCooldowns(screenW, screenH)
-    local panelW = 370
-    local panelH = 168
+    local panelW = 384
+    local panelH = 192
     local x = screenW - panelW - 26
     local y = screenH - panelH - 26
 
@@ -94,26 +121,27 @@ local function drawCooldowns(screenW, screenH)
 
     render.setFont(fontTitle)
     render.setColor(TEXT_MAIN)
-    render.drawSimpleText(x + 16, y + 10, "== cooldowns ==", TEXT_ALIGN.LEFT)
+    render.drawSimpleText(x + 16, y + 10, "COOLDOWNS", TEXT_ALIGN.LEFT)
 
-    render.setFont(fontBody)
     for index, id in ipairs(order) do
         local entry = abilities[id]
         local percent = getPercent(entry)
-        local bar = makeBar(percent, 16)
         local timeLeft = getTimeLeft(entry)
-        local textY = y + 38 + ((index - 1) * 28)
-        local rightText = timeLeft > 0 and string.format("%.1fs", timeLeft) or "ready"
+        local rowY = y + 40 + ((index - 1) * 35)
+        local fillColor = percent >= 1 and BAR_READY or (index % 2 == 0 and BAR_FILL_ALT or BAR_FILL)
 
+        render.setFont(fontTiny)
         render.setColor(TEXT_DIM)
-        render.drawSimpleText(x + 16, textY, entry.key, TEXT_ALIGN.LEFT)
-
-        render.setColor(percent >= 1 and BAR_READY or BAR_FILL)
-        render.drawSimpleText(x + 70, textY, bar, TEXT_ALIGN.LEFT)
+        render.drawSimpleText(x + 16, rowY, entry.key, TEXT_ALIGN.LEFT)
 
         render.setColor(TEXT_MAIN)
-        render.drawSimpleText(x + 230, textY, entry.label, TEXT_ALIGN.LEFT)
-        render.drawSimpleText(x + panelW - 16, textY, rightText, TEXT_ALIGN.RIGHT)
+        render.drawSimpleText(x + 56, rowY, entry.label:upper(), TEXT_ALIGN.LEFT)
+
+        drawBattery(x + 144, rowY - 2, 170, 20, percent, fillColor)
+
+        render.setFont(fontBody)
+        render.setColor(percent >= 1 and BAR_READY or TEXT_MAIN)
+        render.drawSimpleText(x + panelW - 16, rowY - 4, formatTime(timeLeft), TEXT_ALIGN.RIGHT)
     end
 end
 
@@ -182,4 +210,3 @@ hook.add("render", "dingus_cute_ascii_ui", function()
 end)
 
 return ui
-
