@@ -144,6 +144,7 @@ else
     astrosounds.preload("maxwellThemePickup", 0.22, true, false, "http://144.31.143.58/maxwell-the-cat-theme.mp3")
     astrosounds.preload("maxwellThemeHead", 0.35, true, false, "http://144.31.143.58/maxwell-the-cat-theme.mp3")
     astrosounds.preload("maxwellBoom", 1, false, false, "http://144.31.143.58/minecraft-explosion-meme-sound-effect.mp3")
+    astrosounds.preload("dingusPurr", 0.8, false, false, "http://144.31.143.58/purring-cat.mp3")
 
 
     ---Play sound
