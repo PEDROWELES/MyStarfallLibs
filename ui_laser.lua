@@ -217,6 +217,10 @@ function ui.showPrompt(text, duration)
     promptExpire = now() + (duration or 5)
 end
 
+function ui.showEquipHint(duration)
+    ui.showPrompt("Чтобы взять кота Дингуса: Q > Оружие > Прочее > Hands", duration or 6)
+end
+
 local function drawCuteUi()
     local screenW, screenH = render.getGameResolution()
     if not screenW or not screenH then return end
