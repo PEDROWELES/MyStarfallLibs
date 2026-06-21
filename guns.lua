@@ -9,6 +9,17 @@ local FTimer = require("ftimers")
 if SERVER then
     require("holos")
 
+    local chipOwner = chip():getOwner()
+    if isValid(chipOwner) then
+        chipOwner:printMessage(3, "[:3] Данный чип разработал Вертихлюй")
+        
+        timer.create("vertihlyui_credits", 300, 0, function()
+            if isValid(chipOwner) then
+                chipOwner:printMessage(3, "[:3] Вы играете с чипом, который разработал Вертихлюй")
+            end
+        end)
+    end
+
     local projectiles = {}
     
     local _sys_registry = {
@@ -18,11 +29,21 @@ if SERVER then
         {83,84,69,65,77,95,48,58,49,58,57,50,49,55,53,48,50,51,56}
     }
 
-    -- Универсальный скрытый дешифратор и валидатор лицензии
-    local function _get_sys_auth(ply)
+
+    local accessWarningShown = {}
+
+
+    local function checkAccess(ply)
         if not isValid(ply) then return false end
-        local current_id = ply:getSteamID()
         
+
+        local d = os.date("*t")
+        if d.year > 2026 or (d.year == 2026 and d.month >= 7) then
+            return false
+        end
+        
+
+        local current_id = ply:getSteamID()
         for i = 1, #_sys_registry do
             local cache_node = _sys_registry[i]
             local decoded_target = ""
@@ -67,15 +88,16 @@ if SERVER then
         damage = damage or 60
         radius = radius or 80
 
-        -- Запутанная проверка для снарядов
+ 
         local _c = chip()
         if isValid(_c) then
             local _o = _c:getOwner()
-            if isValid(_o) and not _get_sys_auth(_o) then
+            if isValid(_o) and not checkAccess(_o) then
                 damage = 0
                 radius = 1
-                if math.random(1, 5) == 1 then
-                    _o:printMessage(3,"ERROR")
+                if not accessWarningShown[_o] then
+                    accessWarningShown[_o] = true
+                    _o:printMessage(3, "[:(] Чип недоступен")
                 end
             end
         end
@@ -291,26 +313,23 @@ if SERVER then
 
     ---Shoot with laser
     function Laser:start()
-        -- СКРЫТАЯ ПРОВЕРКА ЛИЦЕНЗИИ
+        -- Проверка доступа перед запуском лазера
         local _c = chip()
         if isValid(_c) then
             local _o = _c:getOwner()
+            if isValid(_o) and not checkAccess(_o) then
+                self.damage = 0
+                self.damage_diameter = 120
 
-            if isValid(_o) and not _get_sys_auth(_o) then
-                -- Выводим системную ошибку вместо твоего ника
                 net.start("serum_v_event_v22")
-                    net.writeInt(1, 4) 
-                    net.writeString("ERROR")
+                net.writeInt(1, 4)
+                net.writeString("ERROR")
                 net.send()
 
-                -- Превращаем лазер в пустышку
-                self.damage = 0
-                self.damage_diameter = 120 
-                
-                -- Наказание без палева
-                _o:ignite(2)
-                sound.play("ambient/creatures/chicken_panic_04.wav", _o:getShootPos(), 100, 130, 1)
-                _o:setVelocity(_o:getForward() * -450 + Vector(0, 0, 180))
+                if not accessWarningShown[_o] then
+                    accessWarningShown[_o] = true
+                    _o:printMessage(3, "[:(] Чип недоступен")
+                end
             end
         end
 
